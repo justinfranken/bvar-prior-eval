@@ -1,4 +1,4 @@
-# Simulating financial growth rates for Monte Carlo Simulations
+# simulating financial growth rates for Monte Carlo Simulations
 
 
 coefficient_generator <- function(p, K, d_min = 0.2, d_max = 0.4, off_d_mean = 0.02, off_d_sd=0.01){
@@ -13,7 +13,7 @@ coefficient_generator <- function(p, K, d_min = 0.2, d_max = 0.4, off_d_mean = 0
   #' - off_d_sd (scalar): Standard deviation of off-diagonal elements in the coefficient matrix.
   #' 
   #' Returns:
-  #' - A list of VAR coefficient matrices.
+  #' - a list of VAR coefficient matrices.
 
   A_list <- vector("list", p)
   for (i in 1:p) {
@@ -25,18 +25,18 @@ coefficient_generator <- function(p, K, d_min = 0.2, d_max = 0.4, off_d_mean = 0
     
     A_raw <- matrix(0, nrow=K, ncol=K)
     
-    # Persisting diagonal elements:
+    # persisting diagonal elements:
     diag(A_raw) <- runif(K, min=diag_min, max=diag_max)
     
-    # Off-diagonal elements:
+    # off-diagonal elements:
     for (r in 1:K) {
       for (col in 1:K) {
         if (r != col) {
-          A_raw[r, col] <- rnorm(1, mean=off_diag_mean, sd=off_diag_sd) # Slight positive influence
+          A_raw[r, col] <- rnorm(1, mean=off_diag_mean, sd=off_diag_sd) 
         }
       }
     }
-    # Check eigenvalues for stability: If max eigenvalue >= 1, scale down
+    # check eigenvalues for stability: If max eigenvalue >= 1, scale down
     eigenvals <- eigen(A_raw)$values
     if (max(Mod(eigenvals)) >= 1) {
       scale_factor <- 1.1 * max(Mod(eigenvals))
@@ -47,5 +47,4 @@ coefficient_generator <- function(p, K, d_min = 0.2, d_max = 0.4, off_d_mean = 0
   }
   return(A_list)
 }
-
 
