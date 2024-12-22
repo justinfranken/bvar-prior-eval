@@ -96,5 +96,8 @@ get_growth_rates <- function(input){
     (input[-(1:4), 3] - input[1:(nrow(input) - 4), 3])/input[1:(nrow(input) - 4), 3]
   )
   
+  # small break to prevent overuse of downloading capacity
+  Sys.sleep(5)
+  
   return(growth_rates)
 }
