@@ -1,4 +1,7 @@
-# file containing all libraries used in this project.
+# file containing all libraries used in this project
 
-# lapply(c("rvest", "dplyr", "httr"), require, character.only = TRUE)   # used only to download real financial data.
+
+# used to download and inspect real financial data
+# lapply(c("rvest", "dplyr", "httr", "vars", "tseries"), require, character.only = TRUE)  
+
 
