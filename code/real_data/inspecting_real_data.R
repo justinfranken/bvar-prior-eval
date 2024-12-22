@@ -58,7 +58,6 @@ plot_gr <- function(industry_gr){
 }
 
 
-
 # --- large cap pharmaceutical -------------------------------------------------
 pharma_tickers <- c("LLY", "NVO", "JNJ", "ABBV", "MRK", "AZN", "NVS", "PFE")
 pharma_corp_names <- c("eli-lilly", 
@@ -70,11 +69,27 @@ pharma_corp_names <- c("eli-lilly",
                        "pfizer")
 pharma <- get_industry_growth_rates(pharma_tickers, pharma_corp_names, 4)
 plot_gr(pharma)
+
 # summary statistics
 summary(pharma[,-1])
 mean(colMeans(as.matrix(pharma[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(pharma[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
-
+# check time series
+pharma_ts <- ts(na.omit(pharma[,-1]), start = c(2012, 1), frequency = 4)
+colnames(pharma_ts) <- pharma_tickers
+# stationarity
+pharma_adf <- matrix(NA, ncol = length(pharma_tickers), nrow = 1)
+for (i in 1:length(pharma_tickers)) {
+  pharma_adf[1,i] <- adf.test(pharma_ts[,i])$p.value
+}
+colnames(pharma_adf) <- pharma_tickers
+pharma_adf
+# lags
+acf(pharma_ts)
+VARselect(pharma_ts, type = "const", lag.max = 10)
+# VAR coefficients
+pharma_var <- VAR(pharma_ts[,c("LLY", "JNJ", "MRK", "AZN", "NVS")], p = 5, type = "const")
+summary(pharma_var)
 
 
