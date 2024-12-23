@@ -52,8 +52,24 @@ c <- rep(0.01, K)  # all firms grow ~1% on average
 Rho <- matrix(c(1,   0.7, 0.6,
                 0.7, 1,   0.65,
                 0.6, 0.65,1   ), nrow=K)
+
+
+Rho <- matrix(0, nrow = K, ncol = K)
+
+diag(Rho) <- 1
+
+# Off-diagonal: random draws only for upper triangle, then mirror
+for (r in 1:(K-1)) {
+  for (col in (r+1):K) {
+    x <- runif(1, min = 0.50, max = 0.85)
+    Rho[r, col] <- x
+    Rho[col, r] <- x
+  }
+}
+
+
 # Set standard deviations: assume the leading firm has slightly lower volatility
-sd_vec <- c(0.02, 0.025, 0.025)
+sd_vec <-  rnorm(K, mean = 0.2, sd = 0.005) 
 Sigma <- diag(sd_vec) %*% Rho %*% diag(sd_vec)
 
 # We must generate normal random vectors with covariance Sigma.
