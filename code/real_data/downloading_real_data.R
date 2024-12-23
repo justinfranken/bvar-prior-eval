@@ -48,6 +48,9 @@ download_revenue_data <- function(ticker, corp_name){
       )
   }
   
+  # small break to prevent overuse of downloading capacity
+  Sys.sleep(5)
+  
   out = as.data.frame(cleaned_data)
   return(out)
 }
@@ -95,9 +98,6 @@ get_growth_rates <- function(input){
     rep(NA, 4), 
     (input[-(1:4), 3] - input[1:(nrow(input) - 4), 3])/input[1:(nrow(input) - 4), 3]
   )
-  
-  # small break to prevent overuse of downloading capacity
-  Sys.sleep(5)
   
   return(growth_rates)
 }
