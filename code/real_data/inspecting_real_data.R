@@ -35,11 +35,14 @@ get_industry_growth_rates <- function(tickers, corp_names, type){
 }
 
 
-plot_gr <- function(industry_gr){
+plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Companies Over Time", legend_off = FALSE){
   #' Plot industry growth rates.
   #' 
   #' Parameters:
   #' - industry_gr (data.frame): Output of get_industry_growth_rates().
+  #' - adj_cex (scalar): Adjust size of legend in plot.
+  #' - title (string): Title of the plot.
+  #' - legend_off (boolean): If TRUE, legend won't be displayed.
   #' 
   #' Returns:
   #' - Plot of the input growth rates.
@@ -47,15 +50,18 @@ plot_gr <- function(industry_gr){
     industry_gr[,1], industry_gr[,-1], type = "l", lty = 1, 
     col = 1:ncol(industry_gr[,-1]),
     xlab = "Year", ylab = "Growth Rate", 
-    main = "Growth Rates of Companies Over Time"
+    main = title
   )
-  legend(
-    "topleft", 
-    legend = colnames(industry_gr[,-1]), 
-    col = 1:ncol(industry_gr[,-1]), 
-    lty = 1, 
-    cex = 0.7
-  )
+  abline(h = mean(colMeans(as.matrix(industry_gr[,-1]), na.rm = TRUE)), col = "red", lty = 2)
+  if (legend_off == FALSE) {
+    legend(
+      "topleft", 
+      legend = colnames(industry_gr[,-1]), 
+      col = 1:ncol(industry_gr[,-1]), 
+      lty = 1, 
+      cex = adj_cex
+    )
+  }
   abline(h = 0, col = "black", lty = 2)
 }
 
@@ -216,7 +222,7 @@ cp_corp_names <- c("procter-gamble",
                      "energizer-holdings"
 )
 cp <- get_industry_growth_rates(cp_tickers, cp_corp_names, 4)
-plot_gr(cp[,-7])
+plot_gr(cp[,c(-7, -8)])
 
 # summary statistics
 summary(cp[,-1])
@@ -321,3 +327,17 @@ mean(colMeans(as.matrix(merged_all_industry[,-1]), na.rm = TRUE))
 sd(colMeans(as.matrix(merged_all_industry[,-1]), na.rm = TRUE))
 
 
+# --- plot all industry growth rates -------------------------------------------
+par(mfrow = c(4,2))
+indust_list <- list(pharma, soft[,-8], oag, auto[,-8], cp[,c(-7, -8)], machinary, banks)
+indust_names <- c("pharma growth rates",
+                  "software growth rates",
+                  "oil and gas growth rates",
+                  "auto manufacturers growth rates",
+                  "comercial products growth rates",
+                  "machinery growth rates",
+                  "banks growth rates")
+for (i in 1:length(indust_list)) {
+  plot_gr(indust_list[[i]], title = indust_names[i], legend_off = TRUE)
+}
+par(mfrow = c(1,1))
