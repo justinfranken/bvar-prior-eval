@@ -5,24 +5,41 @@ sim_y <- function(K,
                   p, 
                   T,
                   target_mu = 0.015,
-                  sd_of_mu = 0.01,
-                  # --- parameters for coefficient matrix A ---------------------
+                  sd_of_mu = 0.005,
+                  # --- PARAMETERS FOR COEFFICIENT MATRIX A --------------------
                   d_min_coef = 0.2, 
                   d_max_coef = 0.4, 
-                  off_d_mean_coef = 0.05, 
-                  off_d_sd_coef = 0.01,
-                  # --- parameters for time series shocks ----------------------
-                  shock_diag_min = 0.3, 
-                  shock_diag_max = 0.6, 
+                  off_d_mean_coef = 0.10, 
+                  off_d_sd_coef = 0.05,
+                  # --- PARAMETERS FOR TIME SERIES SHOCKS ----------------------
+                  shock_diag_min = 0.2, 
+                  shock_diag_max = 0.5, 
                   mean_vola = 0.015, 
                   sd_vola = 0.005,
+                  # --- individual shocks -----------------------
                   min_indiv_shocks = 0,
                   max_indiv_shocks = 2,
-                  shock_length_min = 1,
-                  shock_length_max = 5,
-                  shock_ampl_min   = 0.05,
-                  shock_ampl_max   = 0.15,
-                  shock_decay      = 0.5){
+                  indiv_shock_length_min = 1,
+                  indiv_shock_length_max = 5,
+                  indiv_shock_ampl_min = 0.05,
+                  indiv_shock_ampl_max = 0.15,
+                  indiv_shock_decay = 0.5,
+                  # --- high volatility period ------------------
+                  min_high_vol_periods = 1,
+                  max_high_vol_periods = 2,
+                  high_vol_period_length_min = 3,
+                  high_vol_period_length_max = 8,
+                  high_vol_strength_min = 2,
+                  high_vol_strength_max = 2.5,
+                  # --- exogenous shocks ------------------------
+                  min_exog_shocks = 1,
+                  max_exog_shocks = 2,
+                  exog_shock_length_min = 1,
+                  exog_shock_length_max = 5,
+                  exog_shock_ampl_min = 0.05,
+                  exog_shock_ampl_max = 0.10,
+                  exog_shock_decay = 0.5,
+                  exog_shock_shift_range = 3){
   #' Creates T simulations of a K*1 vector y of a VAR(p) process.
   #' 
   #' Parameters:
@@ -65,13 +82,27 @@ sim_y <- function(K,
                               shock_diag_max, 
                               mean_vola, 
                               sd_vola,
-                              min_indiv_shocks,
+                              min_indiv_shocks ,
                               max_indiv_shocks,
-                              shock_length_min,
-                              shock_length_max,
-                              shock_ampl_min,
-                              shock_ampl_max,
-                              shock_decay)
+                              indiv_shock_length_min,
+                              indiv_shock_length_max,
+                              indiv_shock_ampl_min,
+                              indiv_shock_ampl_max,
+                              indiv_shock_decay,
+                              min_high_vol_periods,
+                              max_high_vol_periods,
+                              high_vol_period_length_min,
+                              high_vol_period_length_max,
+                              high_vol_strength_min,
+                              high_vol_strength_max,
+                              min_exog_shocks,
+                              max_exog_shocks,
+                              exog_shock_length_min,
+                              exog_shock_length_max,
+                              exog_shock_ampl_min,
+                              exog_shock_ampl_max,
+                              exog_shock_decay,
+                              exog_shock_shift_range)
   
   # initial p lags
   Y <- matrix(0, nrow = T, ncol = K)
@@ -96,10 +127,10 @@ sim_y <- function(K,
 
 helper_coefficient_generator <- function(p, 
                                   K, 
-                                  d_min = 0.2, 
-                                  d_max = 0.4, 
-                                  off_d_mean = 0.02, 
-                                  off_d_sd=0.01){
+                                  d_min, 
+                                  d_max, 
+                                  off_d_mean, 
+                                  off_d_sd){
   #' Helper function which creates a list of p many K*K VAR coefficient 
   #' matrices, which decay lineally with increasing lags p.
   #' 
@@ -171,31 +202,60 @@ helper_average_growth <- function(target_mu, sd_of_mu, A_list, K){
 
 helper_eps_generator <- function(K, 
                                  T, 
-                                 shock_diag_min = 0.5, 
-                                 shock_diag_max = 0.85, 
-                                 mean_vola = 0.2, 
-                                 sd_vola = 0.005,
-                                 min_indiv_shocks = 0,
-                                 max_indiv_shocks = 3,
-                                 shock_length_min = 1,
-                                 shock_length_max = 5,
-                                 shock_ampl_min   = 0.05,
-                                 shock_ampl_max   = 0.15,
-                                 shock_decay      = 0.5) {
+                                 shock_diag_min, 
+                                 shock_diag_max, 
+                                 mean_vola, 
+                                 sd_vola,
+                                 # --- individual shocks -----------------------
+                                 min_indiv_shocks,
+                                 max_indiv_shocks,
+                                 indiv_shock_length_min,
+                                 indiv_shock_length_max,
+                                 indiv_shock_ampl_min,
+                                 indiv_shock_ampl_max,
+                                 indiv_shock_decay,
+                                 # --- high volatility period ------------------
+                                 min_high_vol_periods,
+                                 max_high_vol_periods,
+                                 high_vol_period_length_min,
+                                 high_vol_period_length_max,
+                                 high_vol_strength_min,
+                                 high_vol_strength_max,
+                                 # --- exogenous shocks ------------------------
+                                 min_exog_shocks,
+                                 max_exog_shocks,
+                                 exog_shock_length_min,
+                                 exog_shock_length_max,
+                                 exog_shock_ampl_min,
+                                 exog_shock_ampl_max,
+                                 exog_shock_decay,
+                                 exog_shock_shift_range) {
   #' Helper function to creates a T*K matrix of shocks. First, draws from a 
-  #' multivariate normal distribution with a correlation structure Rho. Then adds 
-  #' short-lived "individual shocks" for each variable K, which revert quickly.
+  #' multivariate normal distribution with a correlation structure Rho. Can add
+  #' high vola periods and exogenous and individual shocks, where exogenous shocks
+  #' are correlated with high vola periods if they exist.
   #'
   #' Parameters:
   #' - K (integer): Number of variables.
   #' - T (integer): Number of observations.
   #' - shock_diag_min, shock_diag_max (scalar): Range for the off-diagonal correlations.
   #' - mean_vola, sd_vola (scalar): Mean and SD for drawing each firm's volatility.
-  #' - min_indiv_shocks, max_indiv_shocks (integer): Range of how many "big shocks" 
-  #'        can appear in each variable's time series.
-  #' - shock_length_min, shock_length_max (scalar): Range of durations for these big shocks.
-  #' - shock_ampl_min, shock_ampl_max (scalar): Range for the initial amplitude of each shock.
-  #' - shock_decay (scalar): Decay factor for the shock. 
+  #' --- shock parameters ------------------------------------------------------
+  #' - min_indiv_shocks, max_indiv_shocks, in_indiv_shocks, 
+  #'   max_indiv_shocks, in_indiv_shocks, max_indiv_shocks (integer): 
+  #'    - Range of how many "shocks" can appear in each variable's time series.
+  #' - indiv_shock_length_min, indiv_shock_length_max, exog_shock_length_min, 
+  #'   exog_shock_length_max, high_vol_period_length_min, 
+  #'   high_vol_period_length_max (integer): 
+  #'    - Range of durations for these shocks.
+  #' - indiv_shock_ampl_min, indiv_shock_ampl_max, exog_shock_ampl_min, 
+  #'   exog_shock_ampl_max (scalar): 
+  #'    - Range for the amplitude of each shock.
+  #' - high_vol_strength_min, high_vol_strength_max (scalar):
+  #'    - Range for the intensity of increased volatility.
+  #' - indiv_shock_decay, exog_shock_decay (scalar): Decay factor for the shock.
+  #' - exog_shock_shift_range (integer): how many periods around the high-vol 
+  #'   segment we shift exogenous shocks.
   #'
   #' Returns:
   #' - A T*K matrix containing the simulation shocks.
@@ -203,8 +263,6 @@ helper_eps_generator <- function(K,
   # create baseline correlation matrix
   Rho <- matrix(0, nrow = K, ncol = K)
   diag(Rho) <- 1
-  
-  # off-diagonal: random draws (for upper triangle), then mirror
   for (r in 1:(K-1)) {
     for (col in (r+1):K) {
       x <- runif(1, min = shock_diag_min, max = shock_diag_max)
@@ -216,7 +274,7 @@ helper_eps_generator <- function(K,
   # adjust Rho if it is not positive (semi) definite
   Rho <- as.matrix(nearPD(Rho, corr = TRUE)$mat)
   
-  # standard deviations: each firm has random volatility
+  # construct the covariance matrix Sigma
   sd_vec <- rnorm(K, mean = mean_vola, sd = sd_vola)
   Sigma  <- diag(sd_vec) %*% Rho %*% diag(sd_vec)
   
@@ -225,25 +283,91 @@ helper_eps_generator <- function(K,
   Z         <- matrix(rnorm(T * K), nrow = T, ncol = K)
   eps       <- Z %*% cholSigma
   
-  # add individual larger shocks 
-  num_shocks_vec <- sample(min_indiv_shocks:max_indiv_shocks, K, replace = TRUE)
   
-  for (k in seq_len(K)) {
-    n_shocks <- num_shocks_vec[k]
+  # --- PERIODS OF HIGHER VOLATILITY -------------------------------------------
+  number_high_vol_periods <- sample(min_high_vol_periods:max_high_vol_periods, 1)
+  
+  hv_periods <- data.frame(
+    hv_start  = integer(number_high_vol_periods),
+    hv_length = integer(number_high_vol_periods)
+  )
+  
+  if (number_high_vol_periods > 0) {
+    for (i in 1:number_high_vol_periods) {
+      hv_length <- sample(high_vol_period_length_min:high_vol_period_length_max, 1)
+      hv_start  <- sample(seq_len(T - hv_length), 1)
+      hv_multiplier <- runif(1, min = high_vol_strength_min, max = high_vol_strength_max)
+      
+      range_idx <- hv_start:(hv_start + hv_length - 1)
+      eps[range_idx, ] <- eps[range_idx, ] * hv_multiplier
+      
+      # store these in hv_periods so we can reuse them
+      hv_periods$hv_start[i]  <- hv_start
+      hv_periods$hv_length[i] <- hv_length
+    }
+  }
+  
+  
+  # --- INDIVIDUAL SHOCKS ------------------------------------------------------
+  num_indiv_shocks_vec <- sample(min_indiv_shocks:max_indiv_shocks, K, replace = TRUE)
+  
+  for (k in 1:K) {
+    n_indiv_shocks <- num_indiv_shocks_vec[k]
     
-    if (n_shocks > 0) {
-      for (s in 1:n_shocks) {
-        shock_length  <- sample(shock_length_min:shock_length_max, 1)
-        shock_start   <- sample(seq_len(T - shock_length), 1)
+    if (n_indiv_shocks > 0) {
+      for (s in 1:n_indiv_shocks) {
+        indiv_shock_length  <- sample(indiv_shock_length_min:indiv_shock_length_max, 1)
+        indiv_shock_start   <- sample(seq_len(T - indiv_shock_length), 1)
         
-        shock_amplitude <- runif(1, shock_ampl_min, shock_ampl_max)
-        shock_sign      <- sample(c(-1, 1), 1)  
-        shock_amplitude <- shock_amplitude * shock_sign
+        indiv_shock_amplitude <- runif(1, indiv_shock_ampl_min, indiv_shock_ampl_max)
+        indiv_shock_sign      <- sample(c(-1, 1), 1)
+        indiv_shock_amplitude <- indiv_shock_amplitude * indiv_shock_sign
         
-        # reverting back to the mean
-        for (i in 0:(shock_length - 1)) {
-          t_index <- shock_start + i
-          eps[t_index, k] <- eps[t_index, k] + shock_amplitude * (shock_decay^i)
+        for (i in 0:(indiv_shock_length - 1)) {
+          t_index <- indiv_shock_start + i
+          eps[t_index, k] <- eps[t_index, k] + indiv_shock_amplitude * (indiv_shock_decay^i)
+        }
+      }
+    }
+  }
+  
+  
+  # --- EXOGENOUS SHOCKS -------------------------------------------------------
+  n_exog_shocks <- sample(min_exog_shocks:max_exog_shocks, 1)
+  
+  if (n_exog_shocks > 0) {
+    for (s in 1:n_exog_shocks) {
+      exog_shock_length    <- sample(exog_shock_length_min:exog_shock_length_max, 1)
+      exog_shock_amplitude <- runif(K, exog_shock_ampl_min, exog_shock_ampl_max)
+      
+      # pick a random vola period to center around
+      if (number_high_vol_periods > 0) {
+        idx <- sample(seq_len(nrow(hv_periods)), 1)
+        center <- hv_periods$hv_start[idx]
+        
+        # shift the exog shock start
+        offset <- sample(seq(-exog_shock_shift_range, exog_shock_shift_range), 1)
+        exog_start <- center + offset
+      } else {
+        # if no vola periods, just pick random start
+        exog_start <- sample(seq_len(T - exog_shock_length), 1)
+      }
+      
+      # safety check
+      if (exog_start < 1) exog_start <- 1
+      if (exog_start + exog_shock_length - 1 > T) {
+        exog_shock_length <- T - exog_start + 1
+      }
+      
+      # sign can differ for each variable
+      sign_vec <- sample(c(-1, 1), 1)
+      
+      # apply to all K variables
+      for (i in 0:(exog_shock_length - 1)) {
+        t_index <- exog_start + i
+        for (k in 1:K) {
+          eps[t_index, k] <- eps[t_index, k] + 
+            exog_shock_amplitude[k] * (exog_shock_decay^i) * sign_vec
         }
       }
     }
@@ -301,6 +425,27 @@ hhelper_make_stationary_A <- function(A_list, K, tol = 1e-10) {
 K = 5
 p = 5
 T = 50
-ts.plot(sim_y(K, p, T), col=1:K, main="Simulated Growth Rates of Comparable Firms")
-mean(colMeans(sim_y(K, p, T)))
-colMeans(sim_y(K, p, T))
+ts.plot(sim_y(K, p, T, 
+              min_indiv_shocks = 0, 
+              max_indiv_shocks = 0, 
+              min_high_vol_periods = 0, 
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0), 
+        col=1:K, main= "No shocks")
+ts.plot(sim_y(K, p, T, 
+              min_high_vol_periods = 0, 
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0), 
+        col=1:K, main= "Individual shocks")
+ts.plot(sim_y(K, p, T, 
+              min_indiv_shocks = 0, 
+              max_indiv_shocks = 0), 
+        col=1:K, main= "Exogenous shocks")
+ts.plot(sim_y(K, p, T), col=1:K, main= "Individual and exogenous shocks")
+
+
+
+str(sim_y(5,5,50))
+
