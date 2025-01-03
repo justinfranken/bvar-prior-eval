@@ -4,133 +4,82 @@
 sim_y <- function(K,
                   p, 
                   T,
-                  target_mu = 0.015,
-                  sd_of_mu = 0.005,
-                  # --- PARAMETERS FOR COEFFICIENT MATRIX A --------------------
-                  d_min_coef = 0.2, 
-                  d_max_coef = 0.4, 
-                  off_d_mean_coef = 0.10, 
-                  off_d_sd_coef = 0.05,
                   # --- PARAMETERS FOR TIME SERIES SHOCKS ----------------------
-                  shock_diag_min = 0.2, 
-                  shock_diag_max = 0.5, 
-                  mean_vola = 0.015, 
-                  sd_vola = 0.005,
+                  init_sd = 0.015,
                   # --- individual shocks -----------------------
                   min_indiv_shocks = 0,
-                  max_indiv_shocks = 2,
+                  max_indiv_shocks = 0,
                   indiv_shock_length_min = 1,
-                  indiv_shock_length_max = 5,
-                  indiv_shock_ampl_min = 0.05,
-                  indiv_shock_ampl_max = 0.15,
-                  indiv_shock_decay = 0.5,
+                  indiv_shock_length_max = 3,
                   # --- high volatility period ------------------
-                  min_high_vol_periods = 1,
-                  max_high_vol_periods = 2,
-                  high_vol_period_length_min = 3,
+                  min_high_vol_periods = 0,
+                  max_high_vol_periods = 0,
+                  high_vol_period_length_min = 4,
                   high_vol_period_length_max = 8,
-                  high_vol_strength_min = 2,
-                  high_vol_strength_max = 2.5,
                   # --- exogenous shocks ------------------------
-                  min_exog_shocks = 1,
-                  max_exog_shocks = 2,
+                  min_exog_shocks = 0,
+                  max_exog_shocks = 0,
                   exog_shock_length_min = 1,
-                  exog_shock_length_max = 5,
-                  exog_shock_ampl_min = 0.05,
-                  exog_shock_ampl_max = 0.10,
-                  exog_shock_decay = 0.5,
-                  exog_shock_shift_range = 3){
+                  exog_shock_length_max = 2){
   #' Creates T simulations of a K*1 vector y of a VAR(p) process.
   #' 
   #' Parameters:
   #' - K (integer): How many variables are included.
   #' - p (integer): How many lags are included.
   #' - T (integer): How many observations are going to be simulated.
-  #' - target_mu, sd_of_mu (scalar): Average and standard deviation of growth rate from y.
-  #' - d_min_coef, d_max_coef (scalar): Range of the diagonal elements in the coefficient matrix.
-  #' - off_d_mean_coef, off_d_sd_coef (scalar): Mean and standard deviation of off-diagonal
-  #'                                            elements in the coefficient matrix.
-  #' - shock_diag_min, shock_diag_max (scalar): Range for the off-diagonal correlations.
-  #' - mean_vola, sd_vola (scalar): Mean and SD for drawing each firm's volatility.
-  #' - min_indiv_shocks, max_indiv_shocks (integer): Range of how many big shocks can appear
-  #'                                                 in each variable's time series.
-  #' - shock_length_min, shock_length_max (scalar): Range of durations for the big shocks.
-  #' - shock_ampl_min, shock_ampl_max (scalar): Range for the initial amplitude of each shock.
-  #' - shock_decay (scalar): Decay factor for the shock. 
+  #' - init_sd (scalar): Initial volatility for first p lags.
+  #' - min_..._shocks, max_..._shocks (integer): Range of how many individual/ exogenous
+  #'                                    shocks can appear in each variable's time series.
+  #' - ..._length_min, ..._length_max (scalar): Range of durations for the shocks.
   #' 
   #' Returns:
   #' - K*1 matrix of simulated y's.
 
   # compute coefficient matrix A
-  A_list <- helper_coefficient_generator(p, 
-                                         K, 
-                                         d_min_coef, 
-                                         d_max_coef, 
-                                         off_d_mean_coef, 
-                                         off_d_sd_coef)
-  
-  # compute average growth rates
-  c <- helper_average_growth(target_mu, 
-                             sd_of_mu, 
-                             A_list, 
-                             K)
-  
+  A_list <- helper_coefficient_generator(p, K)
+
   # compute shocks
-  eps <- helper_eps_generator(K, 
-                              T, 
-                              shock_diag_min, 
-                              shock_diag_max, 
-                              mean_vola, 
-                              sd_vola,
-                              min_indiv_shocks ,
-                              max_indiv_shocks,
-                              indiv_shock_length_min,
-                              indiv_shock_length_max,
-                              indiv_shock_ampl_min,
-                              indiv_shock_ampl_max,
-                              indiv_shock_decay,
-                              min_high_vol_periods,
-                              max_high_vol_periods,
-                              high_vol_period_length_min,
-                              high_vol_period_length_max,
-                              high_vol_strength_min,
-                              high_vol_strength_max,
-                              min_exog_shocks,
-                              max_exog_shocks,
-                              exog_shock_length_min,
-                              exog_shock_length_max,
-                              exog_shock_ampl_min,
-                              exog_shock_ampl_max,
-                              exog_shock_decay,
-                              exog_shock_shift_range)
+  eps <- helper_eps_generator(K = K, 
+                              T = T+p,
+                              min_indiv_shocks = min_indiv_shocks,
+                              max_indiv_shocks = max_indiv_shocks,
+                              indiv_shock_length_min = indiv_shock_length_min,
+                              indiv_shock_length_max = indiv_shock_length_max,
+                              min_high_vol_periods = min_high_vol_periods,
+                              max_high_vol_periods = max_high_vol_periods,
+                              high_vol_period_length_min = high_vol_period_length_min,
+                              high_vol_period_length_max = high_vol_period_length_max,
+                              min_exog_shocks = min_exog_shocks,
+                              max_exog_shocks = max_exog_shocks,
+                              exog_shock_length_min = exog_shock_length_min,
+                              exog_shock_length_max = exog_shock_length_max)
   
-  # initial p lags
-  Y <- matrix(0, nrow = T, ncol = K)
+  # initialize series
+  Y <- matrix(0, nrow = T + p, ncol = K)
   for (i in 1:p) {
-    Y[i,] <- c + rnorm(K, mean = 0, sd = sd_vola)
+    Y[i, ] <- rnorm(K, mean = 0, sd = init_sd)
   }
   
-  # generate the series
-  for (t in (p+1):T) {
-    # compute the VAR component
-    Y_t <- c
+  # simulate series
+  for (t in (p+1):(T + p)) {
+    Y_t <- rep(0, K)
     for (lag in 1:p) {
-      Y_t <- Y_t + A_list[[lag]] %*% Y[t-lag,]
+      Y_t <- Y_t + A_list[[lag]] %*% Y[t-lag, ]
     }
-    # add the shock
-    Y[t,] <- Y_t + eps[t,]
+    Y[t, ] <- Y_t + eps[t, ]
   }
   
-  return(Y)
+  return(Y[(p+1):(T + p), ])
 }
 
 
 helper_coefficient_generator <- function(p, 
-                                  K, 
-                                  d_min, 
-                                  d_max, 
-                                  off_d_mean, 
-                                  off_d_sd){
+                                         K, 
+                                         d_min = 0.1,
+                                         d_max = 0.3, 
+                                         off_d_mean = 0, 
+                                         off_d_sd = 0.05,
+                                         persistence_factor = 0.4) {
   #' Helper function which creates a list of p many K*K VAR coefficient 
   #' matrices, which decay lineally with increasing lags p.
   #' 
@@ -140,11 +89,15 @@ helper_coefficient_generator <- function(p,
   #' - d_min_coef, d_max_coef (scalar): Range of the diagonal elements in the coefficient matrix.
   #' - off_d_mean_coef, off_d_sd_coef (scalar): Mean and standard deviation of off-diagonal
   #'                                            elements in the coefficient matrix.
+  #' - persistence_factor (scalar): Determines how strongly coefficients of lag p+1
+  #'                                 depend on those of lag p (default = 0.5).
   #' 
   #' Returns:
   #' - A list of p-many K*K VAR coefficient matrices.
-
+  
   A_list <- vector("list", p)
+  prev_A <- NULL
+  
   for (i in 1:p) {
     
     diag_min <- d_min / i
@@ -153,83 +106,78 @@ helper_coefficient_generator <- function(p,
     off_diag_sd   <- off_d_sd / i
     
     A_raw <- matrix(0, nrow=K, ncol=K)
-    
-    # persisting diagonal elements
-    diag(A_raw) <- runif(K, min=diag_min, max=diag_max)
-    
-    # off-diagonal elements
+
+    # Generate elements with persistence
     for (r in 1:K) {
       for (col in 1:K) {
         if (r != col) {
-          A_raw[r, col] <- rnorm(1, mean=off_diag_mean, sd=off_diag_sd) 
+          if (!is.null(prev_A)) {
+            prev_sign <- sign(prev_A[r, col])
+            base_value <- rnorm(1, mean = persistence_factor * prev_A[r, col], sd = off_diag_sd)
+            A_raw[r, col] <- base_value + prev_sign * abs(rnorm(1, mean = off_diag_mean, sd = off_diag_sd))
+          } else {
+            # Initial lag coefficients sampled independently
+            A_raw[r, col] <- rnorm(1, mean = off_diag_mean, sd = off_diag_sd)
+          }
+        }
+        else {
+          if(!is.null(prev_A)){
+            prev_sign <- sign(prev_A[r, col])
+            base_value <- runif(1, min = persistence_factor * diag_min, max = persistence_factor * diag_max)
+            A_raw[r, col] <- base_value + prev_sign * abs(runif(1, min = diag_min, max = diag_max))
+          }
+          else{
+            # Initial lag coefficients sampled independently
+            diag_sign <- sample(c(-1,1), 1, prob = c(0.90, 0.10))
+            A_raw[r, col] <- runif(1, min = diag_min, max = diag_max) * diag_sign
+          }
         }
       }
     }
     
+    # Update the list and store the current matrix as previous
     A_list[[i]] <- A_raw
+    prev_A <- A_raw
   }
   
-  # check if stable
+  # Check if stable
   A_list <- hhelper_make_stationary_A(A_list, K)
   
   return(A_list)
 }
 
 
-helper_average_growth <- function(target_mu, sd_of_mu, A_list, K){
-  #' Helper function to create average growth vector for the VAR(p) process.
-  #' 
-  #' Parameters:
-  #' - target_mu (scalar): Average growth rate of y.
-  #' - sd_of_mu (scalar): Standard deviation of average growth rates of each 
-  #'                      variable K in y.
-  #' - A_list (list): List output from helper_coefficient_generator.
-  #' - K (integer): Number of variables in y.
-  #' 
-  #' Returns:
-  #' - Vector of average growth for the VAR(p) process.
-  
-  A_sum <- Reduce(`+`, A_list)
-  
-  mu <- rnorm(K, mean = target_mu, sd = sd_of_mu)
-  
-  tmp <- diag(K) - A_sum
-  c_vec <- tmp %*% mu
-  
-  return(c_vec)
-}
-
 
 helper_eps_generator <- function(K, 
                                  T, 
-                                 shock_diag_min, 
-                                 shock_diag_max, 
-                                 mean_vola, 
-                                 sd_vola,
+                                 shock_diag_min = 0.05,
+                                 shock_diag_max = 0.2, 
+                                 mean_vola = 0.025, 
+                                 sd_vola = 0.005,
                                  # --- individual shocks -----------------------
                                  min_indiv_shocks,
                                  max_indiv_shocks,
                                  indiv_shock_length_min,
                                  indiv_shock_length_max,
-                                 indiv_shock_ampl_min,
-                                 indiv_shock_ampl_max,
-                                 indiv_shock_decay,
+                                 indiv_shock_ampl_min = 0.075,
+                                 indiv_shock_ampl_max = 0.2,
+                                 indiv_shock_decay = 0.5,
                                  # --- high volatility period ------------------
                                  min_high_vol_periods,
                                  max_high_vol_periods,
                                  high_vol_period_length_min,
                                  high_vol_period_length_max,
-                                 high_vol_strength_min,
-                                 high_vol_strength_max,
+                                 high_vol_strength_min = 2,
+                                 high_vol_strength_max = 3.5,
                                  # --- exogenous shocks ------------------------
                                  min_exog_shocks,
                                  max_exog_shocks,
                                  exog_shock_length_min,
                                  exog_shock_length_max,
-                                 exog_shock_ampl_min,
-                                 exog_shock_ampl_max,
-                                 exog_shock_decay,
-                                 exog_shock_shift_range) {
+                                 exog_shock_ampl_min = 0.075,
+                                 exog_shock_ampl_max = 0.15,
+                                 exog_shock_decay = 0.5,
+                                 exog_shock_shift_range = 3) {
   #' Helper function to creates a T*K matrix of shocks. First, draws from a 
   #' multivariate normal distribution with a correlation structure Rho. Can add
   #' high vola periods and exogenous and individual shocks, where exogenous shocks
@@ -270,10 +218,7 @@ helper_eps_generator <- function(K,
       Rho[col, r] <- x
     }
   }
-  
-  # adjust Rho if it is not positive (semi) definite
-  Rho <- as.matrix(nearPD(Rho, corr = TRUE)$mat)
-  
+
   # construct the covariance matrix Sigma
   sd_vec <- rnorm(K, mean = mean_vola, sd = sd_vola)
   Sigma  <- diag(sd_vec) %*% Rho %*% diag(sd_vec)
@@ -377,14 +322,13 @@ helper_eps_generator <- function(K,
 }
 
 
-hhelper_make_stationary_A <- function(A_list, K, tol = 1e-10) {
+hhelper_make_stationary_A <- function(A_list, K) {
   #' Helper helper function which adjusts the coefficient matrix A such that it 
   #' is stationary if needed.
   #' 
   #' Parameters:
   #' - A_list (list): List of length p with K x K coefficient matrices from 
   #'                  helper_coefficient_generator.
-  #' - tol (scalar): small tolerance for numerical checks.
   #' 
   #' Returns: 
   #' - Adjusted A_list, if it was unstationary.
@@ -393,16 +337,12 @@ hhelper_make_stationary_A <- function(A_list, K, tol = 1e-10) {
   A_sum <- Reduce(`+`, A_list)
   
   repeat {
-    # check if (I - A_sum) is invertible
-    tmp <- diag(K) - A_sum
-    d <- det(tmp)
-
     # also check spectral radius
     eigvals <- eigen(A_sum)$values
     rho     <- max(Mod(eigvals))
     
     # scale down if necessary
-    if ((abs(d) < tol) || (rho >= 1)) {
+    if (rho >= 0.99) {
       # scale factor = 1.01 * rho or something slightly bigger than rho
       scale_factor <- 1.01 * rho
       if (scale_factor < 1.01) scale_factor <- 1.01
@@ -422,9 +362,11 @@ hhelper_make_stationary_A <- function(A_list, K, tol = 1e-10) {
 
 
 
-K = 5
-p = 5
-T = 50
+K = 8
+p = 3
+T = 40
+
+# no shocks
 ts.plot(sim_y(K, p, T, 
               min_indiv_shocks = 0, 
               max_indiv_shocks = 0, 
@@ -432,20 +374,38 @@ ts.plot(sim_y(K, p, T,
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0), 
-        col=1:K, main= "No shocks")
+        col=1:K, main= "No shocks", ylim = c(-0.25, 0.25))
+abline(h = 0, col = "black", lty = 2)
+
+# individual shocks
 ts.plot(sim_y(K, p, T, 
+              min_indiv_shocks = 0, 
+              max_indiv_shocks = 2, 
               min_high_vol_periods = 0, 
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0), 
-        col=1:K, main= "Individual shocks")
+        col=1:K, main= "Individual shocks", ylim = c(-0.25, 0.25))
+abline(h = 0, col = "black", lty = 2)
+
+# exogenous shocks
 ts.plot(sim_y(K, p, T, 
               min_indiv_shocks = 0, 
-              max_indiv_shocks = 0), 
-        col=1:K, main= "Exogenous shocks")
-ts.plot(sim_y(K, p, T), col=1:K, main= "Individual and exogenous shocks")
+              max_indiv_shocks = 0, 
+              min_high_vol_periods = 1, 
+              max_high_vol_periods = 2,
+              min_exog_shocks = 1,
+              max_exog_shocks = 2), 
+        col=1:K, main= "Exogenous shocks", ylim = c(-0.25, 0.25))
+abline(h = 0, col = "black", lty = 2)
 
-
-
-str(sim_y(5,5,50))
-
+# individual and exogenous shocks
+ts.plot(sim_y(K, p, T,
+              min_indiv_shocks = 0, 
+              max_indiv_shocks = 2, 
+              min_high_vol_periods = 1, 
+              max_high_vol_periods = 2,
+              min_exog_shocks = 1,
+              max_exog_shocks = 2), 
+        col=1:K, main= "Individual and exogenous shocks", ylim = c(-0.25, 0.25))
+abline(h = 0, col = "black", lty = 2)
