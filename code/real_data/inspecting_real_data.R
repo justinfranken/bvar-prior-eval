@@ -4,27 +4,22 @@
 source(paste0(getwd(),"/downloading_real_data.r"))
 
 # functions for analyzing real revenue data
-get_industry_growth_rates <- function(tickers, corp_names, type){
-  #' Loop over input tickers to download industry growth rates
+get_industry_growth_rates <- function(tickers, corp_names){
+  #' Loop over input tickers to download adjusted industry growth rates.
   #' 
   #' Parameters:
   #' - tickers (vector): Containing the tickers of the corporates to be downloaded in upper cases.
   #' - corp_names (vector): Containing the names of the corporates in lower cases.
-  #' - type (scalar): Number indicating which growth rate is downloaded:
-  #'  - 2: quarterly growth rates.
-  #'  - 3: 12 months quarterly growth rates.
-  #'  - 4: TTM quarterly growth rates.
-  #'  - 5: TTM 12 months growth rates.
   #' 
   #' Returns:
-  #' - Data.frame of industry growth rates of determined type.
+  #' - Data.frame of adjusted industry growth rates.
   
   # download revenue data and store in list
   df_list <- list()
   for (i in 1:length(tickers)) {
-    df_list[[i]] <- get_growth_rates(download_revenue_data(
+    df_list[[i]] <- transform_to_stationary(download_revenue_data(
       tickers[i], 
-      corp_names[i]))[,c(1,type)]
+      corp_names[i]))
     colnames(df_list[[i]]) = c("date", tickers[i])
     cat(paste0("Downloaded ", tickers[i], ", which is of row ", nrow(df_list[[i]]), " and col ", ncol(df_list[[i]]), "\n"))
   }
@@ -35,7 +30,7 @@ get_industry_growth_rates <- function(tickers, corp_names, type){
 }
 
 
-plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Companies Over Time", legend_off = FALSE){
+plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Companies Over Time", y_lim = c(-0.35, 0.35), legend_off = FALSE){
   #' Plot industry growth rates.
   #' 
   #' Parameters:
@@ -49,6 +44,7 @@ plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Compani
   matplot(
     industry_gr[,1], industry_gr[,-1], type = "l", lty = 1, 
     col = 1:ncol(industry_gr[,-1]),
+    ylim = y_lim,
     xlab = "Year", ylab = "Growth Rate", 
     main = title
   )
@@ -66,39 +62,39 @@ plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Compani
 }
 
 
-# --- large cap pharmaceutical -------------------------------------------------
-pharma_tickers <- c("LLY", "NVO", "JNJ", "ABBV", "MRK", "AZN", "NVS", "PFE")
-pharma_corp_names <- c("eli-lilly", 
-                       "novo-nordisk", 
-                       "johnson_johnson", 
-                       "abbvie", "merck", 
-                       "astrazeneca", 
-                       "novartis-ag", 
-                       "pfizer")
-pharma <- get_industry_growth_rates(pharma_tickers, pharma_corp_names, 4)
-plot_gr(pharma)
+# --- Utility - Electrical Power Distribution ----------------------------------
+utilities_tickers <- c("NEE", "SO", "DUK", "PCG", "AEP", "D", "PEG")
+utilities_corp_names <- c("nextera-energy", 
+                       "southern", 
+                       "duke-energy", 
+                       "pacific-gas-electric",
+                       "american-electric-power", 
+                       "dominion-energy", 
+                       "public-service-enterprise-group")
+utilities <- get_industry_growth_rates(utilities_tickers, utilities_corp_names)
+plot_gr(utilities, title = "Utilities")
 
 # summary statistics
-summary(pharma[,-1])
-mean(colMeans(as.matrix(pharma[,-1]), na.rm = TRUE))
-abline(h = mean(colMeans(as.matrix(pharma[,-1]), na.rm = TRUE)), col = "red", lty = 2)
+summary(utilities[,-1])
+mean(colMeans(as.matrix(utilities[,-1]), na.rm = TRUE))
+abline(h = mean(colMeans(as.matrix(utilities[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-pharma_ts <- ts(na.omit(pharma[,-1]), start = c(2012, 1), frequency = 4)
-colnames(pharma_ts) <- pharma_tickers
+utilities_ts <- ts(na.omit(utilities[,-1]), start = c(2009, 2), frequency = 4)
+colnames(utilities_ts) <- utilities_tickers
 # stationarity
-pharma_adf <- matrix(NA, ncol = length(pharma_tickers), nrow = 1)
-for (i in 1:length(pharma_tickers)) {
-  pharma_adf[1,i] <- adf.test(pharma_ts[,i])$p.value
+utilities_adf <- matrix(NA, ncol = length(utilities_tickers), nrow = 1)
+for (i in 1:length(utilities_tickers)) {
+  utilities_adf[1,i] <- adf.test(utilities_ts[,i])$p.value
 }
-colnames(pharma_adf) <- pharma_tickers
-pharma_adf
+colnames(utilities_adf) <- utilities_tickers
+utilities_adf
 # lags
-acf(pharma_ts)
-VARselect(pharma_ts, type = "const", lag.max = 10)
+acf(utilities_ts)
+VARselect(utilities_ts, type = "none", lag.max = 10)
 # VAR coefficients
-pharma_var <- VAR(pharma_ts[,c("LLY", "JNJ", "MRK", "AZN", "NVS")], p = 5, type = "const")
-summary(pharma_var)
+utilities_var <- VAR(utilities_ts[,c("SO", "NEE", "AEP", "PCG", "PEG")], p = 8, type = "none")
+summary(utilities_var)
 
 
 # --- computer software --------------------------------------------------------
@@ -113,8 +109,8 @@ soft_corp_names <- c("microsoft",
                        "manhattan-associates",
                        "pegasystems"
                        )
-soft <- get_industry_growth_rates(soft_tickers, soft_corp_names, 4)
-plot_gr(soft)
+soft <- get_industry_growth_rates(soft_tickers, soft_corp_names)
+plot_gr(soft, title = "Software")
 
 # summary statistics
 summary(soft[,-1])
@@ -133,9 +129,9 @@ colnames(soft_adf) <- soft_tickers
 soft_adf
 # lags
 acf(soft_ts)
-VARselect(soft_ts, type = "const", lag.max = 10)
+VARselect(soft_ts, type = "none", lag.max = 10)
 # VAR coefficients
-soft_var <- VAR(soft_ts[,c("MSFT", "SAP", "MSTR", "SSNC", "PEGA")], p = 6, type = "const")
+soft_var <- VAR(soft_ts[,c("MSFT", "SAP", "MSTR", "SSNC", "PEGA")], p = 6, type = "none")
 summary(soft_var)
 
 
@@ -148,8 +144,8 @@ oag_corp_names <- c("exxon",
                      "eni-spa",
                      "ypf-sociedad-anonima"
 )
-oag <- get_industry_growth_rates(oag_tickers, oag_corp_names, 4)
-plot_gr(oag)
+oag <- get_industry_growth_rates(oag_tickers, oag_corp_names)
+plot_gr(oag, title = "Oil and Gas")
 
 # summary statistics
 summary(oag[,-1])
@@ -168,47 +164,45 @@ colnames(oag_adf) <- oag_tickers
 oag_adf
 # lags
 acf(oag_ts)
-VARselect(oag_ts, type = "const", lag.max = 10)
+VARselect(oag_ts, type = "none", lag.max = 10)
 # VAR coefficients
-oag_var <- VAR(oag_ts[,c("XOM", "CVX", "SHEL", "BP", "YPF")], p = 8, type = "const")
+oag_var <- VAR(oag_ts[,c("XOM", "CVX", "SHEL", "BP", "YPF")], p = 9, type = "none")
 summary(oag_var)
 
 
-# --- automotive ---------------------------------------------------------------
-auto_tickers <- c("F", "GM", "TM", "BAMXF", "VWAGY", "MBGYY", "TSLA", "HOG")
-auto_corp_names <- c("ford-motor",
-                     "general-motors",
-                     "toyota",
-                     "bmw",
-                     "volkswagen-ag",
-                     "mercedes-benz-group-ag",
-                     "tesla",
-                     "harley-davidson"
+# --- Medical Products Manufacturers -------------------------------------------
+med_prod_tickers <- c("ABT", "SYK", "BSX", "RMD", "ZBH", "PODD")
+med_prod_corp_names <- c("abbott-laboratories",
+                     "stryker",
+                     "boston-scientific",
+                     "resmed",
+                     "zimmer-biomet-holdings",
+                     "insulet"
 )
-auto <- get_industry_growth_rates(auto_tickers, auto_corp_names, 4)
-plot_gr(auto[,-8])
+med_prod <- get_industry_growth_rates(med_prod_tickers, med_prod_corp_names)
+plot_gr(med_prod, title = "Medical Products_Manufacturers")
 
 # summary statistics
-summary(auto[,-1])
-mean(colMeans(as.matrix(auto[,-1]), na.rm = TRUE))
-abline(h = mean(colMeans(as.matrix(auto[,-1]), na.rm = TRUE)), col = "red", lty = 2)
+summary(med_prod[,-1])
+mean(colMeans(as.matrix(med_prod[,-1]), na.rm = TRUE))
+abline(h = mean(colMeans(as.matrix(med_prod[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-auto_ts <- ts(na.omit(auto[,-1]), start = c(2010, 1), frequency = 4)
-colnames(auto_ts) <- auto_tickers
+med_prod_ts <- ts(na.omit(med_prod[,-1]), start = c(2010, 1), frequency = 4)
+colnames(med_prod_ts) <- med_prod_tickers
 # stationarity
-auto_adf <- matrix(NA, ncol = length(auto_tickers), nrow = 1)
-for (i in 1:length(auto_tickers)) {
-  auto_adf[1,i] <- adf.test(auto_ts[,i])$p.value
+med_prod_adf <- matrix(NA, ncol = length(med_prod_tickers), nrow = 1)
+for (i in 1:length(med_prod_tickers)) {
+  med_prod_adf[1,i] <- adf.test(med_prod_ts[,i])$p.value
 }
-colnames(auto_adf) <- auto_tickers
-auto_adf
+colnames(med_prod_adf) <- med_prod_tickers
+med_prod_adf
 # lags
-acf(auto_ts)
-VARselect(auto_ts, type = "const", lag.max = 10)
+acf(med_prod_ts)
+VARselect(med_prod_ts, type = "none", lag.max = 10)
 # VAR coefficients
-auto_var <- VAR(auto_ts[,c("GM", "TM", "BAMXF", "VWAGY", "MBGYY")], p = 6, type = "const")
-summary(auto_var)
+med_prod_var <- VAR(med_prod_ts[,c("ABT", "SYK", "BSX", "RMD", "ZBH")], p = 9, type = "none")
+summary(med_prod_var)
 
 
 # --- consumer products --------------------------------------------------------
@@ -221,8 +215,8 @@ cp_corp_names <- c("procter-gamble",
                      "newell-brands",
                      "energizer-holdings"
 )
-cp <- get_industry_growth_rates(cp_tickers, cp_corp_names, 4)
-plot_gr(cp[,c(-7, -8)])
+cp <- get_industry_growth_rates(cp_tickers, cp_corp_names)
+plot_gr(cp[,c(-7, -8)], title = "Commercial Products Manufacturers")
 
 # summary statistics
 summary(cp[,-1])
@@ -241,9 +235,9 @@ colnames(cp_adf) <- cp_tickers
 cp_adf
 # lags
 acf(cp_ts)
-VARselect(cp_ts, type = "const", lag.max = 10)
+VARselect(cp_ts, type = "none", lag.max = 10)
 # VAR coefficients
-cp_var <- VAR(cp_ts[,c("PG", "KMB", "CHD", "CLX", "NWL")], p = 7, type = "const")
+cp_var <- VAR(cp_ts[,c("PG", "KMB", "CHD", "CLX", "NWL")], p = 8, type = "none")
 summary(cp_var)
 
 
@@ -258,8 +252,8 @@ machinary_corp_names <- c("parker-hannifin",
                    "graco",
                    "regal-rexnord"
 )
-machinary <- get_industry_growth_rates(machinary_tickers, machinary_corp_names, 4)
-plot_gr(machinary)
+machinary <- get_industry_growth_rates(machinary_tickers, machinary_corp_names)
+plot_gr(machinary, title = "Machinery Producers")
 
 # summary statistics
 summary(machinary[,-1])
@@ -278,9 +272,9 @@ colnames(machinary_adf) <- machinary_tickers
 machinary_adf
 # lags
 acf(machinary_ts)
-VARselect(machinary_ts, type = "const", lag.max = 10)
+VARselect(machinary_ts, type = "none", lag.max = 10)
 # VAR coefficients
-machinary_var <- VAR(machinary_ts[,c("ITW", "ATLKY", "DOV", "TRMB", "GGG")], p = 6, type = "const")
+machinary_var <- VAR(machinary_ts[,c("ITW", "ATLKY", "DOV", "TRMB", "GGG")], p = 7, type = "none")
 summary(machinary_var)
 
 
@@ -294,8 +288,8 @@ banks_corp_names <- c("jpmorgan-chase",
                           "citigroup",
                           "charles-schwab"
 )
-banks <- get_industry_growth_rates(banks_tickers, banks_corp_names, 4)
-plot_gr(banks)
+banks <- get_industry_growth_rates(banks_tickers, banks_corp_names)
+plot_gr(banks, title = "Banks")
 
 # summary statistics
 summary(banks[,-1])
@@ -314,14 +308,14 @@ colnames(banks_adf) <- banks_tickers
 banks_adf
 # lags
 acf(banks_ts)
-VARselect(banks_ts, type = "const", lag.max = 10)
+VARselect(banks_ts, type = "none", lag.max = 10)
 # VAR coefficients
-banks_var <- VAR(banks_ts[,c("JPM", "WFC", "C", "BAC", "MS")], p = 7, type = "const")
+banks_var <- VAR(banks_ts[,c("JPM", "WFC", "C", "BAC", "MS")], p = 8, type = "none")
 summary(banks_var)
 
 
 # --- get overall average mean and its standard deviation ----------------------
-list_all_industries <- list(auto, banks, cp, machinary, oag, pharma, soft)
+list_all_industries <- list(med_prod, banks, cp, machinary, oag, utilities, soft)
 merged_all_industry <- Reduce(function(x, y) merge(x, y, by = "date"), list_all_industries)
 mean(colMeans(as.matrix(merged_all_industry[,-1]), na.rm = TRUE))
 sd(colMeans(as.matrix(merged_all_industry[,-1]), na.rm = TRUE))
@@ -329,11 +323,11 @@ sd(colMeans(as.matrix(merged_all_industry[,-1]), na.rm = TRUE))
 
 # --- plot all industry growth rates -------------------------------------------
 par(mfrow = c(4,2))
-indust_list <- list(pharma, soft[,-8], oag, auto[,-8], cp[,c(-7, -8)], machinary, banks)
-indust_names <- c("pharma growth rates",
+indust_list <- list(utilities, soft[,-8], oag, med_prod, cp[,c(-7, -8)], machinary, banks)
+indust_names <- c("utilities growth rates",
                   "software growth rates",
                   "oil and gas growth rates",
-                  "auto manufacturers growth rates",
+                  "med_prod manufacturers growth rates",
                   "comercial products growth rates",
                   "machinery growth rates",
                   "banks growth rates")
@@ -341,3 +335,18 @@ for (i in 1:length(indust_list)) {
   plot_gr(indust_list[[i]], title = indust_names[i], legend_off = TRUE)
 }
 par(mfrow = c(1,1))
+
+
+
+
+y <- abbvie$quarterly_gr
+
+min_y <- min(y, na.rm = TRUE)  # Find the minimum value
+shift <- ifelse(min_y <= 0, abs(min_y) + 1, 0)  # Determine the shift amount
+shifted_y <- y + shift
+log_y <- log(shifted_y)
+seasonally_differenced <- diff(log_y, lag = 4)
+stationary_series <- diff(seasonally_differenced)
+
+abbvie$log_qrt_gr <- log_y
+abbvie$log_diffed_qrt_gr <- c(rep(NA, 5), stationary_series)

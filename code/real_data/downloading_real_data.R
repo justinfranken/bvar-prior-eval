@@ -9,10 +9,9 @@ download_revenue_data <- function(ticker, corp_name){
   #' - corp_name (string): Corporate name in lower case of that company. E.g. 'apple'.
   #' 
   #' Returns:
-  #' - a data.frame containing 3 columns:
+  #' - a data.frame containing 2 columns:
   #'  - date: string of the format 'YYYY-MM-DD'.
   #'  - revenue: Numerical revenues in mio USD.
-  #'  - TTM: Trailing 12 months, which shows the revenue of the past 12 months of the quarterly data.
   
   # get the data
   url <- paste0(
@@ -39,15 +38,7 @@ download_revenue_data <- function(ticker, corp_name){
     gsub("[$,]", "", cleaned_data$revenue)
     )
   cleaned_data <- cleaned_data[order(cleaned_data$date), ]
-  
-  # computing TTM
-  cleaned_data$TTM <- NA
-  for (i in 4:nrow(cleaned_data)) {
-    cleaned_data$TTM[i] <- sum(
-      cleaned_data$revenue[(i-3):i]
-      )
-  }
-  
+
   # small break to prevent overuse of downloading capacity
   Sys.sleep(5)
   
@@ -56,48 +47,32 @@ download_revenue_data <- function(ticker, corp_name){
 }
 
 
-get_growth_rates <- function(input){
-  #' Compute the growth rates for quarterly revenue data
+transform_to_stationary <- function(data) {
+  #' Computes log differences for growth rates and adjusts quarterly input data 
+  #' by trends and seasonality.
   #' 
   #' Parameters:
-  #' - input (data.frame): The output of download_revenue_data.
+  #' - data (data.frame): Data.frame from download_revenue_data.
   #' 
   #' Returns:
-  #' - A data frame containing 5 columns with computed growth rates:
-  #'  - date: Column indicating the date.
-  #'  - quarterly_gr: Growth rate of raw quarterly data each quarter.
-  #'  - twelve_months_gr: Growth rate of quarterly data compared to previous 12 month revenue.
-  #'  - TTM_quarterly_gr: Growth rate of TTM data each quarter.
-  #'  - TTM_twelve_months_gr: Growth rate of TTM data compared to previous 12 month TTM revenue.
+  #' - Trend and seasonal adjusted logarithmic matrix of growth rates.
+
+  # take the natural logarithm of the data
+  log_data <- log(data$revenue)
   
-  # initiate matrix
-  growth_rates <- data.frame(
-    matrix(NA, dim(input)[1], 5)
-    )
-  colnames(growth_rates) <- c(
-    "date", 
-    "quarterly_gr", 
-    "twelve_months_gr", 
-    "TTM_quarterly_gr", 
-    "TTM_twelve_months_gr"
-    )
+  # de-trending and de-seasonalizing adjustment
+  ts_log_data <- ts(log_data, frequency = 4)
+  decomposed <- stl(ts_log_data, s.window = "periodic")
+  seasonally_adjusted <- decomposed$time.series[, "remainder"]
   
-  # date
-  growth_rates[,1] <- input$date
+  # calculate the first differences of the seasonally adjusted data
+  diff_log_data <- diff(seasonally_adjusted)
   
-  # quarterly data
-  growth_rates[,2] <- c(NA, diff(input[,2]) / input[-length(input$TTM), 2])
-  growth_rates[,3] <- c(
-    rep(NA, 4), 
-    (input[-(1:4), 2] - input[1:(nrow(input) - 4), 2])/input[1:(nrow(input) - 4), 2]
-  )
+  # convert result to a data.frame
+  out <- data.frame(matrix(NA, dim(data)[1], 2))
+  out[,1] <- data$date
+  out[,2] <- matrix(c(NA, diff_log_data), ncol = 1)
   
-  # TTM data
-  growth_rates[,4] <- c(NA, diff(input[,3]) / input[-length(input$TTM), 3])
-  growth_rates[,5] <- c(
-    rep(NA, 4), 
-    (input[-(1:4), 3] - input[1:(nrow(input) - 4), 3])/input[1:(nrow(input) - 4), 3]
-  )
-  
-  return(growth_rates)
+  return(out)
 }
+
