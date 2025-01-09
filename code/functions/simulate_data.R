@@ -362,7 +362,7 @@ hhelper_make_stationary_A <- function(A_list, K) {
 
 
 
-K = 8
+K = 10
 p = 3
 T = 40
 
