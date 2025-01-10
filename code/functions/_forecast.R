@@ -5,8 +5,8 @@ predict_bvar <- function(Phi_store, Sigma_store,
                          Yraw, p, H = 4, 
                          draw_shocks = TRUE,
                          intercept = FALSE,
-                         n_cores = 1) {
-  #' This function produces H-step ahead forecasts for a Bayesian VAR model using posterior draws of 
+                         n_cores = 4) {
+  #' Produces H-step ahead forecasts for a Bayesian VAR model using posterior draws of 
   #' the coefficient matrix (Phi_store) and covariance matrix (Sigma_store). Forecasts are computed 
   #' for each posterior draw, given the last p observations from the dataset.
   #' 
@@ -47,7 +47,8 @@ predict_bvar <- function(Phi_store, Sigma_store,
       draw_shocks   = draw_shocks,
       intercept     = intercept
     )
-  })
+  },
+  future.seed = TRUE)
   # reset to standard environment
   plan(sequential)  
   
@@ -66,7 +67,7 @@ helper_forecast_from_draw <- function(Phi_draw_init, Sigma_draw,
                                H = 4,
                                draw_shocks = TRUE,
                                intercept = FALSE) {
-  #' This function produces H-step ahead forecasts based on a VAR(p) model, given the last p 
+  #' Produces H-step ahead forecasts based on a VAR(p) model, given the last p 
   #' observations, a draw of the coefficient matrix (Phi_draw), and the covariance matrix (Sigma_draw). 
   #' Optionally, it can include an intercept and draw random shocks to incorporate predictive uncertainty.
   #' 
@@ -126,7 +127,7 @@ helper_forecast_from_draw <- function(Phi_draw_init, Sigma_draw,
 
 
 hhelper_reshape_phi <- function(Phi_draw, k, p) {
-  #' This function takes a matrix with dimensions (p*k) x k and reshapes it into a list of p 
+  #' Takes a matrix with dimensions (p*k) x k and reshapes it into a list of p 
   #' matrices, each with dimensions k x k. Each matrix corresponds to a specific lag in a VAR model.
   #' 
   #' Parameters:
