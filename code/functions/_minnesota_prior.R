@@ -3,9 +3,9 @@
 
 minnesota_prior <- function(Y, p, intercept = FALSE,
                           use_flat = FALSE,
-                          dummy_pars = list(),
-                          lambda = 0.2, alpha = 1.0,
-                          sigma_vec = NULL) {
+                          lag_mean = 1,
+                          s2_diag = NULL,
+                          pi1 = 0.2, pi3 = 1, pi4 = 1000) {
   #' Supports either the Minnesota prior or dummy observation-based priors, depending on the input parameters.
   #' 
   #' Parameters:
@@ -13,139 +13,131 @@ minnesota_prior <- function(Y, p, intercept = FALSE,
   #' - p (integer): The lag order of the VAR model.
   #' - intercept (logical): Whether to include an intercept term in the model (default = FALSE).
   #' - use_flat (logical): Whether to use uninformative M0 and V0 priors instead of the Minnesota prior (default = FALSE).
-  #' - dummy_pars (list): Parameters for the dummy observation prior.
-  #' - lambda (numeric): Overall tightness parameter for the Minnesota prior (default = 0.2).
-  #' - alpha (numeric): Lag decay parameter for the Minnesota prior (default = 1.0).
-  #' - sigma_vec (numeric vector): Prior scale for each variable (length k). If NULL, all scales are set to 1 (default = NULL).
+  #' - lag_mean (numeric): Mean for the diagonal elements of the lag coefficients (default = 1).
+  #' - s2_diag (vector): Prior variances for residuals (default = computed from the data).
+  #' - pi1 (numeric): Overall tightness parameter for the prior (default = 0.2).
+  #' - pi3 (numeric): Lag decay parameter for the prior (default = 1).
+  #' - pi4 (numeric): Variance scaling for the intercept (default = 1000).
   #' 
   #' Returns:
   #' - A list containing:
   #'   - M0 (matrix): The prior mean matrix.
-  #'   - V0 (matrix): The prior variance matrix.
+  #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).   #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
   
   k <- ncol(Y)
+  v0 <- k + 2
   
   if(!use_flat) {
-    # use standard Minnesota prior
-    mn_pr <- build_minnesota_M0_V0(k, p, intercept=intercept,
-                                   lambda=lambda, alpha=alpha,
-                                   sigma_vec=sigma_vec)
-    M0 <- mn_pr$M0
-    V0 <- mn_pr$V0
-    return(list(M0 = M0, V0 = V0))
+    # -- use standard Minnesota prior
+    M0 <- helper_build_M0(k, p, intercept, lag_mean)
+    temp_cov <- helper_build_cov_matrix(Y = Y, p = p, v = v0,
+                                        s2_diag = s2_diag,
+                                        intercept = intercept,
+                                        pi1 = pi1,
+                                        pi3 = pi3,
+                                        pi4 = pi4)
+    V0 <- temp_cov$V0
+    S0 <- temp_cov$S0
+    return(list(M0 = M0, V0 = V0, S0 = S0, v0 = v0))
   } else {
-    # use flat uninformative prior
+    # -- use flat uninformative prior
     m <- if(intercept) 1 + k*p else k*p
     M0_flat <- matrix(0, nrow = m, ncol = k)
     V0_flat <- diag(m) * 1e8
-    return(list(M0 = M0_flat, V0 = V0_flat))
+    S0_flat <- diag(k) * 1e-3
+    return(list(M0 = M0_flat, V0 = V0_flat, S0 = S0_flat, v0 = v0))
   }
 }
 
 
-build_minnesota_M0_V0 <- function(k, p, intercept=FALSE,
-                                  lambda=0.2, alpha=1.0,
-                                  sigma_vec=NULL) {
-  #' Generates the prior mean and variance matrices for a Bayesian VAR model using the Minnesota prior.
+helper_build_M0 <- function(k, p, intercept = FALSE, lag_mean = 1){
+  #' Builds the prior mean matrix M0 in a Minnesota fashion.
   #' 
   #' Parameters:
-  #' - k (integer): Number of variables in the VAR model.
-  #' - p (integer): Number of lags in the VAR model.
-  #' - intercept (logical): Whether to include an intercept in the model (default = FALSE).
-  #' - lambda (numeric): Overall tightness of the prior (default = 0.2).
-  #' - alpha (numeric): Lag decay exponent, controlling how quickly the prior tightens for higher lags (default = 1.0).
-  #' - sigma_vec (numeric vector): Prior scale for each variable (length k). If NULL, all scales are set to 1 (default = NULL).
+  #' - k (integer): Number of variables in the BVAR model.
+  #' - p (integer): Number of lags in the BVAR model.
+  #' - intercept (logical): Whether to include an intercept term in the model (default = FALSE).
+  #' - lag_mean (numeric): Mean for the diagonal elements of the lag coefficients (default = 1). 
+  #' Set to < 1 if data is potentially stationary.
   #' 
   #' Returns:
-  #' - A list containing:
-  #'   - M0 (matrix): The prior mean matrix (m x k), where (m = k*p) (or (1 + k*p) if intercept is included).
-  #'   - V0 (matrix): The prior variance matrix (m x m), where (m = k*p) (or (1 + k*p) if intercept is included).
-  
-  if(is.null(sigma_vec)) {
-    sigma_vec <- rep(1, k)
-  }
+  #' - A matrix M0 with dimensions (m x k), where (m = k*p) (or (1 + k*p) if intercept is included).
   
   m <- if(intercept) 1 + k*p else k*p
   
-  # M0
   M0 <- matrix(0, nrow=m, ncol=k)
+  
   if(!intercept){
-    M0[1:k, 1:k] = diag(k)
+    M0[1:k, 1:k] = diag(k) * lag_mean
   } else{
-    M0[2:(k+1), 1:k] = diag(k)
+    M0[2:(k+1), 1:k] = diag(k) * lag_mean
   }
   
-  # V0
-  V0 <- matrix(0, m, m)
-  
-  # intercept row => large variance
-  if(intercept){
-    V0[1,1] <- 10^6
-  }
-  
-  for(ell in 1:p){
-    for(j in 1:k){
-      col_index <- (if(intercept) 1 else 0) + (ell-1)*k + j
-      for(i in 1:k){
-        if(i == j){
-          # own-lag
-          prior_var_ij <- (lambda^2) / (ell^alpha)
-        } else {
-          # cross-lag
-          prior_var_ij <- (lambda^2) / (ell^alpha) * (sigma_vec[i]^2 / sigma_vec[j]^2)
-        }
-        V0[col_index, col_index] <- prior_var_ij
-      }
-    }
-  }
-  
-  return(list(M0 = M0, V0 = V0))
+  return(M0)
 }
 
 
-create_dummy_observations <- function(Y, p, intercept = FALSE,
-                                          delta = 1.0,
-                                          gamma = 1.0,
-                                          prior_mean = NULL) {
-  #' Generates dummy observations for a VAR model, incorporating priors for the sum of coefficients and initial observations.
+helper_build_cov_matrix <- function(Y, p, v, s2_diag = NULL, intercept = FALSE, pi1 = 0.2, pi3 = 1, pi4 = 1000) {
+  #' Builds the covariance matrix and parameters for the normal-Wishart prior.
   #' 
   #' Parameters:
-  #' - Y (matrix): The actual data matrix (T x k), where T is the number of observations, and k is the number of variables.
+  #' - Y (matrix): The dataset (T x k), where T is the number of time points and k is the number of variables.
   #' - p (integer): The lag order of the VAR model.
-  #' - intercept (logical): Whether to include an intercept in the model (default = FALSE).
-  #' - delta (numeric): Tightness parameter for the initial observational prior (default = 1.0).
-  #' - gamma (numeric): Tightness parameter for the sum-of-coefficients prior (default = 1.0).
-  #' - prior_mean (numeric vector): Mean vector for the prior (length k). If NULL, the mean of the first p rows of Y is used (default = NULL).
+  #' - v (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #' - s2_diag (vector): Prior variances for residuals (default = computed from the data).
+  #' - intercept (logical): Whether to include an intercept term in the model (default = FALSE).
+  #' - pi1 (numeric): Overall tightness parameter for the prior (default = 0.2).
+  #' - pi3 (numeric): Lag decay parameter for the prior (default = 1).
+  #' - pi4 (numeric): Variance scaling for the intercept (default = 1000).
   #' 
   #' Returns:
   #' - A list containing:
-  #'   - Y_dum (matrix): Dummy response observations.
-  #'   - X_dum (matrix): Dummy design matrix, including lagged values and optionally an intercept term.
+  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).
   
-  T_real <- nrow(Y)
   k <- ncol(Y)
-  
-  if (is.null(prior_mean)) {
-    prior_mean <- colMeans(Y[1:p, , drop = FALSE], na.rm = TRUE)
+  m <- if (intercept) 1 + k * p else k * p
+
+  if(is.null(s2_diag)) {
+    s2_diag <- hhelper_compute_sigma_vec(Y, p)
   }
   
-  # Sum-of-Coefficients Dummy
-  Y_sum <- diag((gamma)^-1 * prior_mean)
-  X_sum <- matrix(0, nrow = k, ncol = p * k)
-  for (i in 1:p) {
-    X_sum[, ((i - 1) * k + 1):(i * k)] <- Y_sum
+  # S0
+  S <- diag(0, k)
+  for (i in seq_len(k)) {
+    S[i, i] <- (v - k - 1) * s2_diag[i]
   }
-  if (intercept) X_sum <- cbind(rep(0, nrow(X_sum)), X_sum)
   
-  # Dummy Initial Observational Prior
-  Y_init <- matrix((delta)^-1 * prior_mean, nrow = 1)
-  X_init <- matrix(0, nrow = 1, ncol = p * k + as.integer(intercept))
-  if (intercept) X_init[1, 1] <- 1 / (delta)^-1
-  X_init[1, (1+as.integer(intercept)):(as.integer(intercept) + p * k)] <- (delta)^-1 * rep(prior_mean, times = p)
+  # Omega
+  diag_elements <- numeric(m)
+  for (lag in seq_len(p)) {
+    diag_elements[((lag - 1) * k + 1):(lag * k)] <- pi1^2 / ((lag ^ pi3)^2 * s2_diag)
+  }
+  if (intercept) {
+    diag_elements <- c(pi1^2 * pi4^2, diag_elements)
+  }
+  Omega <- diag(diag_elements, nrow = m)
   
-  # Combine Dummies
-  Y_dum <- rbind(Y_sum, Y_init)
-  X_dum <- rbind(X_sum, X_init)
-  
-  return(list(Y_dum = Y_dum, X_dum = X_dum))
+  return(list(S0 = S, V0 = Omega))
 }
+
+
+hhelper_compute_sigma_vec <- function(Y, p) {
+  #' Computes residual variance for each variable in an AR model.
+  #' 
+  #' Parameters:
+  #' - Y (matrix): A dataset (T x k), where T is the number of time points and k is the number of variables.
+  #' - p (integer): The lag order for the AR(p) model fitted to each variable.
+  #' 
+  #' Returns:
+  #' - A numeric vector of length k, containing the residual variance for each variable.
+  
+  apply(Y, 2, function(y) {
+    fit <- ar(y, order.max = p, aic = FALSE, method = "ols")
+    mean(fit$resid^2, na.rm = TRUE) # Residual variance
+  })
+}
+
