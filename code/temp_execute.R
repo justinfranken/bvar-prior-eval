@@ -26,15 +26,18 @@ for (i in 1:length(function_files)) {
 
 k <- 7
 p <- 3
-T_data <- 40
-Yraw <- sim_y(k, p, T_data, 
+h <- 4
+T_data <- 40 + h
+data <- sim_y(k, p, T_data, 
               min_indiv_shocks = 0, 
               max_indiv_shocks = 0, 
               min_high_vol_periods = 0, 
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0)
-Yraw <- Yraw *100
+data <- data*100
+Ypred <- data[(T_data-h+1):T_data,]
+Yraw <- data[1:(T_data-h),]
 
 # ---- run Minnesota Gibbs Sampling --------------------------------------------
 
@@ -48,14 +51,14 @@ res_gibbs <- run_bvar(
   Yraw         = Yraw,
   p            = p,
   intercept    = intercept,
-  use_dummies  = TRUE,
+  use_dummies  = FALSE,
   dummy_pars   = dummy_pars_ex,
   use_flat     = FALSE,
-  lambda       = 0.2,
-  alpha        = 1.0,
-  sigma_vec    = NULL,
-  S0           = diag(k),
-  nu0          = k + 2,
+  lag_mean     = 1,
+  pi1          = 0.2,
+  pi3          = 1,
+  pi4          = 1000,
+  sigma_vec    = NULL, 
   n_draws      = 5000,
   burnin       = 1000
 )
@@ -93,7 +96,7 @@ Y_forecasts <- predict_bvar(
   Sigma_store = res_gibbs$Sigma,
   Yraw        = Yraw,
   p           = p,
-  H           = 4,
+  H           = h,
   draw_shocks = TRUE,
   intercept = intercept,
   n_cores = 2
@@ -112,3 +115,38 @@ Y_forecast_ci_upper <- apply(Y_forecasts, c(1, 2), quantile, probs = (1-alpha/2)
 Y_forecast_median
 Y_forecast_ci_lower
 Y_forecast_ci_upper
+
+
+# ---- evaluate prediction -----------------------------------------------------
+
+# --- root mean squared error (rmse)
+# individual forecasts
+pred_error_mat <- matrix(NA, nrow(Y_forecast_median), ncol(Y_forecast_median), 
+                   dimnames = list(rownames(Y_forecast_median), paste0("Y", 1:k)))
+
+for (row in 1:nrow(pred_error_mat)) {
+  for (col in 1:ncol(pred_error_mat)) {
+    pred_error_mat[row, col] <- sqrt(mean((Y_forecast_median[row, col] - Ypred[row, col])^2))
+  }
+}
+
+# h-step ahead forecast
+row_rmse <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+for (i in 1:h) {
+  row_rmse[i,] <- sqrt(mean((Y_forecast_median[i,] - Ypred[i,])^2))
+}
+
+# variable forecast
+col_rmse <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
+for (i in 1:k) {
+  col_rmse[,i] <- sqrt(mean((Y_forecast_median[,i] - Ypred[,i])^2))
+}
+
+# total rmse
+all_rmse <- sqrt(mean((Y_forecast_median - Ypred)^2))
+
+
+pred_error_mat
+row_rmse
+col_rmse
+all_rmse
