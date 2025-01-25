@@ -22,16 +22,13 @@ run_gs_minnesota <- function(Y, X, M0, V0, S0, nu0,
   #'   - Sigma (array): Posterior draws of the error covariance matrix with dimensions (k x k x (n_draws - burnin)).
   
   T_eff <- nrow(Y)
-  k     <- ncol(Y)
-  m     <- ncol(X)
+  k <- ncol(Y)
+  m <- ncol(X)
   
   # storage
-  Phi_store   <- array(NA, dim=c(m, k, n_draws))
+  Phi_store <- array(NA, dim=c(m, k, n_draws))
   Sigma_store <- array(NA, dim=c(k, k, n_draws))
-  
-  # initialize
-  Sigma_current <- diag(apply(Y, 2, var))
-  
+
   # -- precompute terms that do not change across iterations
   XX <- crossprod(X)
   V0_inv <- chol2inv(chol(V0))
@@ -40,34 +37,248 @@ run_gs_minnesota <- function(Y, X, M0, V0, S0, nu0,
   
   # posterior mean of Phi, M1
   XTY <- crossprod(X, Y)
-  M1  <- V1 %*% (V0_inv %*% M0 + XTY)
+  M1 <- V1 %*% (V0_inv %*% M0 + XTY)
   
   # for Sigma draws
   XX_inv <- chol2inv(chol(XX))
+  Phi_ols <- crossprod(XX_inv,XTY)
   temp <- V0 + XX_inv
   inv_middle_term <- chol2inv(chol(temp))
-  
-  
+
   ## -- draw from posterior
   for(iter in 1:n_draws) {
+    # draw Sigma given Phi
+    Sigma_current <- posterior_draw_Sigma(Y, X, Phi_ols, M0, S0, nu0, inv_middle_term)
+    
     # draw Phi given Sigma
     Phi_current <- posterior_draw_Phi(M1, Sigma_current, V1)
     
-    # draw Sigma given Phi
-    Sigma_current <- posterior_draw_Sigma(Y, X, Phi_current, M0, S0, nu0, inv_middle_term)
-    
     # store
-    Phi_store[,,iter]   <- Phi_current
+    Phi_store[,,iter] <- Phi_current
     Sigma_store[,,iter] <- Sigma_current
   }
   
   # drop burn-in
   keep_idx <- seq.int(from = burnin + 1, to = n_draws)
-  Phi_out   <- Phi_store[,, keep_idx, drop=FALSE]
+  Phi_out <- Phi_store[,, keep_idx, drop=FALSE]
   Sigma_out <- Sigma_store[,, keep_idx, drop=FALSE]
   
   return(list(
-    Phi   = Phi_out,
+    Phi = Phi_out,
     Sigma = Sigma_out
   ))
 }
+
+
+run_mh_hierarch <- function(Y, X, p, intercept, hyper_params, 
+                            n_thin, scale_hess, adjust_burn, acc_upper,
+                            acc_lower, acc_change,
+                            pi4 = 1000, lag_mean = 1,
+                            n_draws = 5000, burnin = 1000){
+  #' This function performs Metropolis-Hastings sampling to estimate the posterior
+  #' distribution of hyper parameters in a hierarchical Bayesian framework. It initializes
+  #' the MCMC loop by optimizing the posterior density, adjusts the proposal distribution
+  #' based on acceptance rates during the burn-in phase, and stores the sampled draws
+  #' after thinning. The function handles parameter constraints and ensures numerical
+  #' stability throughout the sampling process.
+  #'
+  #' Parameters:
+  #' - Y (matrix): The observed data matrix with dimensions T x k, where T is the number of observations and k is the number of variables.
+  #' - X (matrix): The predictor matrix with dimensions T x n, where n is the number of predictors.
+  #' - p (integer): The lag order or another relevant integer parameter used in the hierarchical_prior function.
+  #' - intercept (logical): Indicates whether an intercept term is included in the model.
+  #' - hyper_params (list): A list containing hyperparameters for the prior distributions of hyper parameters. 
+  #'   It should include elements like pi1_param, mu_param, gamma_param, and s2_diag_param, each containing mode, a, and b values.
+  #' - n_thin (integer): The thinning interval for the MCMC samples to reduce autocorrelation.
+  #' - scale_hess (numeric): A scaling factor applied to the Hessian matrix to adjust the proposal covariance.
+  #' - adjust_burn (numeric): A factor determining how much of the burn-in period is used for adjusting the proposal distribution.
+  #' - acc_upper (numeric): The upper threshold for the acceptance rate to adjust the proposal covariance.
+  #' - acc_lower (numeric): The lower threshold for the acceptance rate to adjust the proposal covariance.
+  #' - acc_change (numeric): The amount by which to adjust the proposal covariance based on the acceptance rate.
+  #' - pi4 (numeric, default = 1000): Variance scaling for the intercept.
+  #' - lag_mean (integer, default = 1): Mean for the diagonal elements of the lag coefficients.
+  #' - n_draws (integer, default = 5000): The total number of MCMC draws to generate.
+  #' - burnin (integer, default = 1000): The number of initial MCMC iterations to discard as burn-in.
+  #'
+  #' Returns:
+  #' - A list containing:
+  #'   - Phi: An array of sampled Phi coefficient matrices with dimensions (k*p x k x (n_draws - burnin)/n_thin).
+  #'   - Sigma: An array of sampled Sigma covariance matrices with dimensions (k x k x (n_draws - burnin)/n_thin).
+  #'   - hyper_parameters: A matrix of sampled hyper parameters with dimensions ((n_draws - burnin)/n_thin x (3 + k)).
+  #'   - optim_values: The optimized parameter values from the initial optimization step.
+  #'   - log_post_vec: A vector of log-posterior values corresponding to the sampled hyper parameters.
+  #'   - acceptance_rate: The overall acceptance rate of the MCMC sampler after the burn-in.
+  
+  # ----------------------------------------------------------------------------
+  # initialize MCMC loop
+  # ----------------------------------------------------------------------------
+  
+  # --- run optim
+  optim_par <- c(hyper_params$pi1_param$mode, hyper_params$mu_param$mode, 
+                 hyper_params$gamma_param$mode, hyper_params$s2_diag_param$mode)
+  lower_bound <- c(1e-04, 1e-04, 1e-04, hyper_params$s2_diag_param$mode / 100)
+  upper_bound <- c(5, 50, 50, hyper_params$s2_diag_param$mode * 100)
+  
+  res <- optim(
+    par = optim_par,
+    fn = optim_log_post_delta,
+    method = "L-BFGS-B",
+    lower = lower_bound,
+    upper = upper_bound,
+    control = list("fnscale" = -1),
+    Y = Y, X = X, p = p, intercept = intercept, pi4 = pi4,
+    hyper_params = hyper_params, lower_bound = lower_bound,
+    upper_bound = upper_bound
+  )
+  
+  H <- diag(res$par) * scale_hess
+  J <- (upper_bound - lower_bound) * exp(res$par) / (1+exp(res$par))^2
+  J <- diag(J)
+  HH <- J %*% H %*% t(J)
+  
+  # make sure HH is positive definite
+  HH_eig <- eigen(HH)
+  HH_eig[["values"]] <- abs(HH_eig[["values"]])
+  HH <- HH_eig
+  
+  # --- draw first proposal
+  while (TRUE) {
+    delta_draw <- as.vector(rmvn_proposal(n = 1, mean = res$par, sigma = HH))
+    prior_draw <- hierarchical_prior(Y, p, intercept, 
+                                     lag_mean = 1, 
+                                     s2_diag = delta_draw[4:(k+3)], 
+                                     pi1 = delta_draw[1], 
+                                     pi4 = pi4)
+    dmy_draw <- create_dummy_observations(Y, p, intercept = intercept,
+                                          mu = delta_draw[2], 
+                                          gamma = delta_draw[3])
+    Y_aug_draw <- rbind(dmy_draw$Y_dum, Y)
+    X_aug_draw <- rbind(dmy_draw$X_dum, X)
+    log_post_draw <- log_posterior_delta(Y = Y_aug_draw, 
+                                         X = X_aug_draw, 
+                                         M0 = prior_draw$M0, 
+                                         V0 = prior_draw$V0, 
+                                         S0 = prior_draw$S0, 
+                                         v0 = prior_draw$v0, 
+                                         pi1_val = delta_draw[1], 
+                                         mu_val = delta_draw[2], 
+                                         gamma_val = delta_draw[3], 
+                                         s2_diag_val = delta_draw[4:(k+3)], 
+                                         hyper_params = hyper_params,
+                                         lower_bound = lower_bound,
+                                         upper_bound = upper_bound)
+    if(log_post_draw > -1e16) {break}
+  }
+  
+  # --- storage
+  priors_list <- list()
+  hyper_vals <- matrix(NA, nrow = (n_draws - burnin)/n_thin, ncol = 3 + k)
+  log_post_vec <- rep(0, (n_draws - burnin)/n_thin)
+  Phi_store <- array(NA, dim=c(ncol(X), k, (n_draws - burnin)/n_thin))
+  Sigma_store <- array(NA, dim=c(k, k, (n_draws - burnin)/n_thin))
+  accepted_adj <- 0 -> accepted
+  
+  # ----------------------------------------------------------------------------
+  # run MCMC loop
+  # ----------------------------------------------------------------------------
+  
+  for (i in seq.int(1 - burnin, n_draws - burnin)) {
+    
+    # --- proposal draw
+    delta_temp <- as.vector(rmvn_proposal(n = 1, mean = res$par, sigma = HH))
+    prior_temp <- hierarchical_prior(Y, p, intercept, 
+                                     lag_mean = 1, 
+                                     s2_diag = delta_temp[4:(k+3)], 
+                                     pi1 = delta_temp[1], 
+                                     pi4 = pi4)
+    dmy_temp <- create_dummy_observations(Y, p, intercept = intercept,
+                                          mu = delta_temp[2], 
+                                          gamma = delta_temp[3])
+    Y_aug_temp <- rbind(dmy_temp$Y_dum, Y)
+    X_aug_temp <- rbind(dmy_temp$X_dum, X)
+    log_post_temp <- log_posterior_delta(Y = Y_aug_temp, 
+                                         X = X_aug_temp, 
+                                         M0 = prior_temp$M0, 
+                                         V0 = prior_temp$V0, 
+                                         S0 = prior_temp$S0, 
+                                         v0 = prior_temp$v0, 
+                                         pi1_val = delta_temp[1], 
+                                         mu_val = delta_temp[2], 
+                                         gamma_val = delta_temp[3], 
+                                         s2_diag_val = delta_temp[4:(k+3)], 
+                                         hyper_params = hyper_params,
+                                         lower_bound = lower_bound,
+                                         upper_bound = upper_bound)
+    
+    # --- accept or reject
+    if(runif(1) < exp(log_post_temp - log_post_draw)){
+      log_post_draw <- log_post_temp
+      delta_draw <- delta_temp
+      prior_draw <- prior_temp
+      Y_aug_draw <- Y_aug_temp
+      X_aug_draw <- X_aug_temp
+      accepted_adj <- accepted_adj + 1
+      if(i > 0) {accepted <- accepted + 1}
+    }
+    
+    # adjust hessian in burn-in phase
+    if(i <= - as.integer(adjust_burn * burnin) && (i + burnin) %% 10 == 0){
+      acc_rate <- accepted_adj / (i + burnin)
+      if(acc_rate < acc_lower){
+        HH$values <- HH$values * (1 - acc_change)
+      } else if(acc_rate > acc_upper){
+        HH$values <- HH$values * (1 + acc_change)
+      }
+    }
+    
+    # --- store draws
+    if(i > 0 && i %% n_thin == 0){
+      hyper_vals[i / n_thin,] <- delta_draw
+      log_post_vec[i / n_thin] <- log_post_draw
+      
+      # draw posterior Sigma and Phi
+      XX <- crossprod(X_aug_draw)
+      V0_inv <- chol2inv(chol(prior_draw$V0))
+      V1_inv <- V0_inv + XX
+      V1 <- chol2inv(chol(V1_inv))
+      
+      # posterior mean of Phi, M1
+      XTY <- crossprod(X_aug_draw, Y_aug_draw)
+      M1 <- V1 %*% (V0_inv %*% prior_draw$M0 + XTY)
+      
+      # for Sigma draws
+      XX_inv <- chol2inv(chol(XX))
+      Phi_ols <- crossprod(XX_inv,XTY)
+      temp <- prior_draw$V0 + XX_inv
+      inv_middle_term <- chol2inv(chol(temp))
+      
+      # draw Sigma
+      Sigma_current <- posterior_draw_Sigma(Y_aug_draw, 
+                                            X_aug_draw, 
+                                            Phi_ols, 
+                                            prior_draw$M0,
+                                            prior_draw$S0,
+                                            prior_draw$v0, 
+                                            inv_middle_term)
+      
+      # draw Phi given Sigma
+      Phi_current <- posterior_draw_Phi(M1, Sigma_current, V1)
+      
+      # store coefficients
+      Phi_store[,,i / n_thin] <- Phi_current
+      Sigma_store[,,i / n_thin] <- Sigma_current
+    }
+  }
+  
+  acceptance_rate <- accepted / (n_draws - burnin)
+  
+  return(list(
+    Phi = Phi_store,
+    Sigma = Sigma_store,
+    hyper_parameters = hyper_vals,
+    optim_values = res$par,
+    log_post_vec = log_post_vec,
+    acceptance_rate = acc_rate
+  ))
+}
+

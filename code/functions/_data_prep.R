@@ -3,7 +3,7 @@
 
 create_lagged_data <- function(Y, p, intercept = FALSE,
                                             use_dummies = FALSE,
-                                            dummy_pars = list(delta = 1.0, gamma = 1.0, prior_mean = NULL)) {
+                                            dummy_pars = list(mu = 1.0, gamma = 1.0, prior_mean = NULL)) {
   #' Creates the response matrix Y and design matrix X for a VAR model, incorporating lagged observations from the real data. 
   #' If specified, it also augments the matrices with dummy observations.
   #' 
@@ -13,7 +13,7 @@ create_lagged_data <- function(Y, p, intercept = FALSE,
   #' - intercept (logical): Whether to include an intercept term in the design matrix (default = FALSE).
   #' - use_dummies (logical): Whether to include dummy observations in the augmented matrices (default = FALSE).
   #' - dummy_pars (list): Parameters for the dummy observations, including:
-  #'   - delta (numeric): Tightness for the initial observational prior (default = 1.0).
+  #'   - mu (numeric): Tightness for the initial observational prior (default = 1.0).
   #'   - gamma (numeric): Tightness for the sum-of-coefficients prior (default = 1.0).
   #'   - prior_mean (numeric vector): Mean vector for the prior. If NULL, it is derived from Yraw (default = NULL).
   #' 
@@ -78,52 +78,4 @@ helper_lagged_data <- function(data, p, intercept = FALSE) {
   }
   
   return(list(y = y, X = X))
-}
-
-
-create_dummy_observations <- function(Y, p, intercept = FALSE,
-                                      delta = 1.0,
-                                      gamma = 1.0,
-                                      prior_mean = NULL) {
-  #' Generates dummy observations for a VAR model, incorporating priors for the sum of coefficients and initial observations.
-  #' 
-  #' Parameters:
-  #' - Y (matrix): The actual data matrix (T x k), where T is the number of observations, and k is the number of variables.
-  #' - p (integer): The lag order of the VAR model.
-  #' - intercept (logical): Whether to include an intercept in the model (default = FALSE).
-  #' - delta (numeric): Tightness parameter for the initial observational prior (default = 1.0).
-  #' - gamma (numeric): Tightness parameter for the sum-of-coefficients prior (default = 1.0).
-  #' - prior_mean (numeric vector): Mean vector for the prior (length k). If NULL, the mean of the first p rows of Y is used (default = NULL).
-  #' 
-  #' Returns:
-  #' - A list containing:
-  #'   - Y_dum (matrix): Dummy response observations.
-  #'   - X_dum (matrix): Dummy design matrix, including lagged values and optionally an intercept term.
-  
-  T_real <- nrow(Y)
-  k <- ncol(Y)
-  
-  if (is.null(prior_mean)) {
-    prior_mean <- colMeans(Y[1:p, , drop = FALSE], na.rm = TRUE)
-  }
-  
-  # Sum-of-Coefficients Dummy
-  Y_sum <- diag((gamma)^-1 * prior_mean)
-  X_sum <- matrix(0, nrow = k, ncol = p * k)
-  for (i in 1:p) {
-    X_sum[, ((i - 1) * k + 1):(i * k)] <- Y_sum
-  }
-  if (intercept) X_sum <- cbind(rep(0, nrow(X_sum)), X_sum)
-  
-  # Dummy Initial Observational Prior
-  Y_init <- matrix((delta)^-1 * prior_mean, nrow = 1)
-  X_init <- matrix(0, nrow = 1, ncol = p * k + as.integer(intercept))
-  if (intercept) X_init[1, 1] <- 1 / (delta)^-1
-  X_init[1, (1+as.integer(intercept)):(as.integer(intercept) + p * k)] <- (delta)^-1 * rep(prior_mean, times = p)
-  
-  # Combine Dummies
-  Y_dum <- rbind(Y_sum, Y_init)
-  X_dum <- rbind(X_sum, X_init)
-  
-  return(list(Y_dum = Y_dum, X_dum = X_dum))
 }

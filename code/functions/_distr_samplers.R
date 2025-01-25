@@ -19,13 +19,13 @@ posterior_draw_Phi <- function(M1, Sigma, V1) {
 }
 
 
-posterior_draw_Sigma <- function(Y, X, Phi, M0, S0, nu0, inv_middle_term) {
+posterior_draw_Sigma <- function(Y, X, Phi_ols, M0, S0, nu0, inv_middle_term) {
   #' Draws posterior samples of the error covariance matrix (Sigma).
   #' 
   #' Parameters:
   #' - Y (matrix): Response matrix with dimensions (T_eff x k), where T_eff is the effective number of observations, and k is the number of variables.
   #' - X (matrix): Design matrix with dimensions (T_eff x m), where m is the number of predictors.
-  #' - Phi (matrix): Current draw of the BVAR coefficient matrix, with dimensions (m x k).
+  #' - Phi_ols (matrix): OLS estimate Phi_hat (m x k).
   #' - M0 (matrix): Prior mean matrix for Phi (m x k).
   #' - S0 (matrix): Prior scale matrix for Sigma (k x k).
   #' - nu0 (numeric): Prior degrees of freedom for Sigma.
@@ -34,9 +34,9 @@ posterior_draw_Sigma <- function(Y, X, Phi, M0, S0, nu0, inv_middle_term) {
   #' Returns:
   #' - A matrix Sigma_draw sampled from the posterior inverse-Wishart distribution, with dimensions (k x k).
 
-  E <- Y - X %*% Phi
+  E <- Y - X %*% Phi_ols
   SSE <- crossprod(E)
-  diffPhi <- M0 - Phi
+  diffPhi <- M0 - Phi_ols
   
   second_term <- crossprod(diffPhi, inv_middle_term %*% diffPhi)
   
@@ -49,6 +49,9 @@ posterior_draw_Sigma <- function(Y, X, Phi, M0, S0, nu0, inv_middle_term) {
   Sigma_draw <- riwish(nu1, S1)
   return(helper_make_positive_definite(Sigma_draw))
 }
+
+
+
 
 
 riwish <- function(df, S){
@@ -69,11 +72,34 @@ riwish <- function(df, S){
 }
 
 
+rmvn_proposal <- function(n, mean, sigma) {
+  #' Generates random samples from a multivariate normal distribution.
+  #'
+  #' Parameters:
+  #' - n (integer): The number of samples to generate.
+  #' - mean (numeric vector): The mean vector of the multivariate normal distribution, of length `m`.
+  #' - sigma (list): A list containing the eigen decomposition of the covariance matrix, with:
+  #'   - values (numeric vector): The eigenvalues of length m.
+  #'   - vectors (matrix): The eigenvectors matrix of dimensions m x m.
+  #'
+  #' Returns:
+  #' - A matrix of dimension n x m where each row is a sampled vector from the specified 
+  #' multivariate normal distribution.
+  
+  m <- length(sigma[["values"]])
+  R <- t(sigma[["vectors"]] %*%
+           (t(sigma[["vectors"]]) * sqrt(sigma[["values"]])))
+  out <- matrix(rnorm(n * m), nrow = n, ncol = m, byrow = TRUE) %*% R
+  out <- sweep(out, 2, mean, "+")
+  return(out)
+}
+
+
 helper_make_positive_definite <- function(matrix, lambda = 1e-8, max_iter = 1000) {
   #' Ensures a matrix is positive definite.
   #' 
   #' Parameters:
-  #' - matrix (matrix): Sigma matrix to be checked and adjusted.
+  #' - matrix (matrix): Matrix to be checked and adjusted.
   #' - lambda (numeric): The initial increment to be added to the diagonal elements (default = 1e-8).
   #' - max_iter (integer): Maximum number of iterations to attempt adjustment (default = 1000).
   #' 
@@ -82,7 +108,6 @@ helper_make_positive_definite <- function(matrix, lambda = 1e-8, max_iter = 1000
   #' 
   #' Throws:
   #' - An error if the matrix cannot be adjusted to be positive definite within the specified number of iterations.
-  
   
   # check if the matrix is already positive definite
   is_positive_definite <- tryCatch({
