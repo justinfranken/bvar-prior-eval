@@ -76,3 +76,31 @@ transform_to_stationary <- function(data) {
   return(out)
 }
 
+
+fn <- function(data){
+  data$date <- as.Date(data$date)
+  
+  # Sort the data by date (just in case it's not already sorted)
+  data <- data[order(data$date), ]
+  
+  # Log Transformation
+  data$log_revenue <- log(data$revenue)
+
+  # First-order Differencing (subtract the previous quarter's value)
+  data$log_diff <- c(NA, diff(data$log_revenue, lag = 1))
+  
+  # Log + Seasonal Differencing
+  data$log_seasonal_diff <- c(rep(NA, 4), diff(data$log_diff, lag = 4))
+  
+  # Remove rows with NA values (from differencing)
+  data_clean <- na.omit(data)
+  return(data_clean)
+}
+
+APPL_clean <- fn(apple)
+MSFT_clean <- fn(microsoft)
+NVDA_clean <- fn(nvidia)
+Yraw = cbind(APPL_clean$log_seasonal_diff, MSFT_clean$log_seasonal_diff, NVDA_clean$log_seasonal_diff)
+
+t = transform_to_stationary(apple)
+plot(NVDA_clean$log_seasonal_diff, type = "l")
