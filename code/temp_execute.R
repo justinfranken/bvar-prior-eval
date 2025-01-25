@@ -11,15 +11,18 @@ source(paste0(getwd(),"/lib.r"))
 function_files <- c(
   "_distr_samplers.R",
   "_forecast.R",
-  "_helper.R",
+  "_hierarch_fun.R",
+  "_data_prep.R",
   "_mcmc.R",
-  "_minnesota_prior.R",
+  "_prior_specification.R",
   "bvar.R",
   "simulate_data.R"
 )
 for (i in 1:length(function_files)) {
   source(paste0(getwd(),"/functions/", function_files[i]))
 }
+rm(i)
+rm(function_files)
 
 
 # ---- simulate data -----------------------------------------------------------
@@ -35,21 +38,23 @@ data <- sim_y(k, p, T_data,
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0)
-data <- data*100
+data <- data * 100
 Ypred <- data[(T_data-h+1):T_data,]
 Yraw <- data[1:(T_data-h),]
 
+
 # ---- run Minnesota Gibbs Sampling --------------------------------------------
 
-dummy_pars_ex <- list(delta = 1.0,
+dummy_pars_ex <- list(mu = 1.0,
                       gamma = 1.0,
                       prior_mean = NULL)
-intercept = FALSE
+intercept = TRUE
+p_bvar <- 3
 
 start <- Sys.time()
-res_gibbs <- run_bvar(
+res_gibbs <- run_bvar_minnesota(
   Yraw         = Yraw,
-  p            = p,
+  p            = p_bvar,
   intercept    = intercept,
   use_dummies  = FALSE,
   dummy_pars   = dummy_pars_ex,
@@ -62,18 +67,65 @@ res_gibbs <- run_bvar(
   n_draws      = 5000,
   burnin       = 1000
 )
-mcmc <- Sys.time() - start
-mcmc
+Sys.time() - start
+
+
+# ---- run Metropolis Hastings sampler -----------------------------------------
+
+mh_params <- list(
+  n_thin <- 1,
+  scale_hess <- 0.04,
+  adjust_burn <- 0.75,
+  acc_lower <- 0.12,
+  acc_upper <- 0.28,
+  acc_change <- 0.05
+)
+hyper_params <- list(pi1_param = calc_gamma_pdf_params(m = 0.2, s = 0.4),
+                     mu_param = calc_gamma_pdf_params(m = 1, s = 1),
+                     gamma_param = calc_gamma_pdf_params(m = 1, s = 1),
+                     s2_diag_param = list(a = 0.02^2, b = 0.02^2, 
+                                  mode = hhelper_compute_sigma_vec(Yraw, p)))
+
+start <- Sys.time()
+res_mh <- run_bvar_hierarch(Yraw = Yraw, lag_mean = 0.9,
+                            p = p_bvar, 
+                            intercept = intercept,
+                            hyper_pars = hyper_params,
+                            mh_params = mh_params)
+Sys.time() - start
+res_mh$acceptance_rate
+plot(res_mh$hyper_parameters[,1], type = "l")
 
 # ---- inspect outputs ---------------------------------------------------------
 
+# --- gibs
 Phi_post_median   <- apply(res_gibbs$Phi, c(1,2), median)
 Sigma_post_median <- apply(res_gibbs$Sigma, c(1,2), median)
 
 # give names to results
 varNames <- paste0("Y", 1:k)
 rowNamesPhi <- c("Intercept")
-for (i in 1:p) {
+for (i in 1:p_bvar) {
+  rowNamesPhi <- c(rowNamesPhi, paste0("Lag", rep(i, k)))
+}
+if(!intercept) rowNamesPhi <- rowNamesPhi[-1]
+
+dimnames(Phi_post_median) <- list(rowNamesPhi, varNames)
+dimnames(Sigma_post_median) <- list(varNames, varNames)
+
+# view results
+Phi_post_median
+Sigma_post_median
+
+
+# --- mh
+Phi_post_median   <- apply(res_mh$Phi, c(1,2), median)
+Sigma_post_median <- apply(res_mh$Sigma, c(1,2), median)
+
+# give names to results
+varNames <- paste0("Y", 1:k)
+rowNamesPhi <- c("Intercept")
+for (i in 1:p_bvar) {
   rowNamesPhi <- c(rowNamesPhi, paste0("Lag", rep(i, k)))
 }
 if(!intercept) rowNamesPhi <- rowNamesPhi[-1]
@@ -88,65 +140,126 @@ Sigma_post_median
 
 # ---- predict data ------------------------------------------------------------
 
+# gibs
 # draw from posterior predictive distribution
-
 start <- Sys.time()
-Y_forecasts <- predict_bvar(
+Y_forecast_gibs <- predict_bvar(
   Phi_store   = res_gibbs$Phi,
   Sigma_store = res_gibbs$Sigma,
   Yraw        = Yraw,
-  p           = p,
+  p           = p_bvar,
   H           = h,
-  draw_shocks = TRUE,
+  draw_shocks = FALSE,
   intercept = intercept,
   n_cores = 2
 )
-pred <- Sys.time() - start
+Sys.time() - start
 
-((pred + mcmc) * 10000) / (60*60)
 
 # inspect results
-alpha <- 0.05
+alpha <- 0.32
 
-Y_forecast_median <- apply(Y_forecasts, c(1, 2), median)
-Y_forecast_ci_lower <- apply(Y_forecasts, c(1, 2), quantile, probs = alpha/2)
-Y_forecast_ci_upper <- apply(Y_forecasts, c(1, 2), quantile, probs = (1-alpha/2))
+Y_forecast_gibs_median <- apply(Y_forecast_gibs, c(1, 2), median)
+Y_forecast_gibs_ci_lower <- apply(Y_forecast_gibs, c(1, 2), quantile, probs = alpha/2)
+Y_forecast_gibs_ci_upper <- apply(Y_forecast_gibs, c(1, 2), quantile, probs = (1-alpha/2))
 
-Y_forecast_median
-Y_forecast_ci_lower
-Y_forecast_ci_upper
+Y_forecast_gibs_median
+Y_forecast_gibs_ci_lower
+Y_forecast_gibs_ci_upper
+
+
+# mh
+start <- Sys.time()
+Y_forecast_mh <- predict_bvar(
+  Phi_store   = res_mh$Phi,
+  Sigma_store = res_mh$Sigma,
+  Yraw        = Yraw,
+  p           = p_bvar,
+  H           = h,
+  draw_shocks = FALSE,
+  intercept = intercept,
+  n_cores = 2
+)
+Sys.time() - start
+
+
+# inspect results
+alpha <- 0.32
+
+Y_forecast_mh_median <- apply(Y_forecast_mh, c(1, 2), median)
+Y_forecast_mh_ci_lower <- apply(Y_forecast_mh, c(1, 2), quantile, probs = alpha/2)
+Y_forecast_mh_ci_upper <- apply(Y_forecast_mh, c(1, 2), quantile, probs = (1-alpha/2))
+
+Y_forecast_mh_median
+Y_forecast_mh_ci_lower
+Y_forecast_mh_ci_upper
 
 
 # ---- evaluate prediction -----------------------------------------------------
 
 # --- root mean squared error (rmse)
-# individual forecasts
-pred_error_mat <- matrix(NA, nrow(Y_forecast_median), ncol(Y_forecast_median), 
-                   dimnames = list(rownames(Y_forecast_median), paste0("Y", 1:k)))
 
-for (row in 1:nrow(pred_error_mat)) {
-  for (col in 1:ncol(pred_error_mat)) {
-    pred_error_mat[row, col] <- sqrt(mean((Y_forecast_median[row, col] - Ypred[row, col])^2))
+# gibs
+# individual forecasts
+pred_error_mat_gibs <- matrix(NA, nrow(Y_forecast_gibs_median), ncol(Y_forecast_gibs_median), 
+                   dimnames = list(rownames(Y_forecast_gibs_median), paste0("Y", 1:k)))
+
+for (row in 1:nrow(pred_error_mat_gibs)) {
+  for (col in 1:ncol(pred_error_mat_gibs)) {
+    pred_error_mat_gibs[row, col] <- sqrt(mean((Y_forecast_gibs_median[row, col] - Ypred[row, col])^2))
   }
 }
 
 # h-step ahead forecast
-row_rmse <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+row_rmse_gibs <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
 for (i in 1:h) {
-  row_rmse[i,] <- sqrt(mean((Y_forecast_median[i,] - Ypred[i,])^2))
+  row_rmse_gibs[i,] <- sqrt(mean((Y_forecast_gibs_median[i,] - Ypred[i,])^2))
 }
 
 # variable forecast
-col_rmse <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
+col_rmse_gibs <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
 for (i in 1:k) {
-  col_rmse[,i] <- sqrt(mean((Y_forecast_median[,i] - Ypred[,i])^2))
+  col_rmse_gibs[,i] <- sqrt(mean((Y_forecast_gibs_median[,i] - Ypred[,i])^2))
 }
 
 # total rmse
-all_rmse <- sqrt(mean((Y_forecast_median - Ypred)^2))
+all_rmse_gibs <- sqrt(mean((Y_forecast_gibs_median - Ypred)^2))
 
 
-pred_error_mat
-row_rmse
-col_rmse
-all_rmse
+
+# mh
+# individual forecasts
+pred_error_mat_mh <- matrix(NA, nrow(Y_forecast_mh_median), ncol(Y_forecast_mh_median), 
+                              dimnames = list(rownames(Y_forecast_mh_median), paste0("Y", 1:k)))
+
+for (row in 1:nrow(pred_error_mat_mh)) {
+  for (col in 1:ncol(pred_error_mat_mh)) {
+    pred_error_mat_mh[row, col] <- sqrt(mean((Y_forecast_mh_median[row, col] - Ypred[row, col])^2))
+  }
+}
+
+# h-step ahead forecast
+row_rmse_mh <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+for (i in 1:h) {
+  row_rmse_mh[i,] <- sqrt(mean((Y_forecast_mh_median[i,] - Ypred[i,])^2))
+}
+
+# variable forecast
+col_rmse_mh <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
+for (i in 1:k) {
+  col_rmse_mh[,i] <- sqrt(mean((Y_forecast_mh_median[,i] - Ypred[,i])^2))
+}
+
+# total rmse
+all_rmse_mh <- sqrt(mean((Y_forecast_mh_median - Ypred)^2))
+
+
+pred_error_mat_gibs
+row_rmse_gibs
+col_rmse_gibs
+all_rmse_gibs
+
+pred_error_mat_mh
+row_rmse_mh
+col_rmse_mh
+all_rmse_mh
