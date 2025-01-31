@@ -14,6 +14,7 @@ function_files <- c(
   "_hierarch_fun.R",
   "_data_prep.R",
   "_mcmc.R",
+  "_ssvs.R",
   "_prior_specification.R",
   "bvar.R",
   "simulate_data.R"
@@ -96,6 +97,29 @@ Sys.time() - start
 res_mh$acceptance_rate
 plot(res_mh$hyper_parameters[,1], type = "l")
 
+
+# ---- run SSVS ----------------------------------------------------------------
+
+dummy_pars_ex <- list(mu = 1.0,
+                      gamma = 1.0,
+                      prior_mean = NULL)
+intercept = TRUE
+p_bvar <- 3
+
+start <- Sys.time()
+res_ssvs <- run_bvar_ssvs(Yraw, p_bvar, 
+                        intercept = intercept, 
+                        use_dummies = FALSE,
+                        dummy_pars = list(mu = 1.0, gamma = 1.0, prior_mean = NULL),
+                        lag_mean = 1,
+                        tau0 = 1/10,
+                        tau1 = 10,
+                        delta_prob = 0.8,
+                        n_draws = 5000,
+                        burnin = 1000)
+Sys.time() - start
+
+
 # ---- inspect outputs ---------------------------------------------------------
 
 # --- gibs
@@ -138,6 +162,25 @@ Phi_post_median
 Sigma_post_median
 
 
+# --- ssvs
+Phi_post_median   <- apply(res_ssvs$Phi, c(1,2), median)
+Sigma_post_median <- apply(res_ssvs$Sigma, c(1,2), median)
+
+# give names to results
+varNames <- paste0("Y", 1:k)
+rowNamesPhi <- c("Intercept")
+for (i in 1:p_bvar) {
+  rowNamesPhi <- c(rowNamesPhi, paste0("Lag", rep(i, k)))
+}
+if(!intercept) rowNamesPhi <- rowNamesPhi[-1]
+
+dimnames(Phi_post_median) <- list(rowNamesPhi, varNames)
+dimnames(Sigma_post_median) <- list(varNames, varNames)
+
+# view results
+Phi_post_median
+Sigma_post_median
+
 # ---- predict data ------------------------------------------------------------
 
 # gibs
@@ -149,7 +192,7 @@ Y_forecast_gibs <- predict_bvar(
   Yraw        = Yraw,
   p           = p_bvar,
   H           = h,
-  draw_shocks = FALSE,
+  draw_shocks = TRUE,
   intercept = intercept,
   n_cores = 2
 )
@@ -176,7 +219,7 @@ Y_forecast_mh <- predict_bvar(
   Yraw        = Yraw,
   p           = p_bvar,
   H           = h,
-  draw_shocks = FALSE,
+  draw_shocks = TRUE,
   intercept = intercept,
   n_cores = 2
 )
@@ -195,11 +238,37 @@ Y_forecast_mh_ci_lower
 Y_forecast_mh_ci_upper
 
 
+# ssvs
+start <- Sys.time()
+Y_forecast_ssvs <- predict_bvar(
+  Phi_store   = res_ssvs$Phi,
+  Sigma_store = res_ssvs$Sigma,
+  Yraw        = Yraw,
+  p           = p_bvar,
+  H           = h,
+  draw_shocks = TRUE,
+  intercept = intercept,
+  n_cores = 2
+)
+Sys.time() - start
+
+
+# inspect results
+alpha <- 0.32
+
+Y_forecast_ssvs_median <- apply(Y_forecast_ssvs, c(1, 2), median)
+Y_forecast_ssvs_ci_lower <- apply(Y_forecast_ssvs, c(1, 2), quantile, probs = alpha/2)
+Y_forecast_ssvs_ci_upper <- apply(Y_forecast_ssvs, c(1, 2), quantile, probs = (1-alpha/2))
+
+Y_forecast_ssvs_median
+Y_forecast_ssvs_ci_lower
+Y_forecast_ssvs_ci_upper
+
 # ---- evaluate prediction -----------------------------------------------------
 
 # --- root mean squared error (rmse)
 
-# gibs
+# -------------- gibs
 # individual forecasts
 pred_error_mat_gibs <- matrix(NA, nrow(Y_forecast_gibs_median), ncol(Y_forecast_gibs_median), 
                    dimnames = list(rownames(Y_forecast_gibs_median), paste0("Y", 1:k)))
@@ -227,7 +296,7 @@ all_rmse_gibs <- sqrt(mean((Y_forecast_gibs_median - Ypred)^2))
 
 
 
-# mh
+# ------------- mh
 # individual forecasts
 pred_error_mat_mh <- matrix(NA, nrow(Y_forecast_mh_median), ncol(Y_forecast_mh_median), 
                               dimnames = list(rownames(Y_forecast_mh_median), paste0("Y", 1:k)))
@@ -253,6 +322,32 @@ for (i in 1:k) {
 # total rmse
 all_rmse_mh <- sqrt(mean((Y_forecast_mh_median - Ypred)^2))
 
+# --------- ssvs
+# individual forecasts
+pred_error_mat_ssvs <- matrix(NA, nrow(Y_forecast_ssvs_median), ncol(Y_forecast_ssvs_median), 
+                            dimnames = list(rownames(Y_forecast_ssvs_median), paste0("Y", 1:k)))
+
+for (row in 1:nrow(pred_error_mat_ssvs)) {
+  for (col in 1:ncol(pred_error_mat_ssvs)) {
+    pred_error_mat_ssvs[row, col] <- sqrt(mean((Y_forecast_ssvs_median[row, col] - Ypred[row, col])^2))
+  }
+}
+
+# h-step ahead forecast
+row_rmse_ssvs <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+for (i in 1:h) {
+  row_rmse_ssvs[i,] <- sqrt(mean((Y_forecast_ssvs_median[i,] - Ypred[i,])^2))
+}
+
+# variable forecast
+col_rmse_ssvs <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
+for (i in 1:k) {
+  col_rmse_ssvs[,i] <- sqrt(mean((Y_forecast_ssvs_median[,i] - Ypred[,i])^2))
+}
+
+# total rmse
+all_rmse_ssvs <- sqrt(mean((Y_forecast_ssvs_median - Ypred)^2))
+
 
 pred_error_mat_gibs
 row_rmse_gibs
@@ -263,3 +358,8 @@ pred_error_mat_mh
 row_rmse_mh
 col_rmse_mh
 all_rmse_mh
+
+pred_error_mat_ssvs
+row_rmse_ssvs
+col_rmse_ssvs
+all_rmse_ssvs
