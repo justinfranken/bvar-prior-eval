@@ -35,7 +35,7 @@ log_delta_pdf <- function(delta, a, b, inverse = FALSE) {
   #' It allows for an inverse.
   #'
   #' Parameters:
-  #' - delta (numeric): The gamma distributedvalue at which to evaluate the PDF.
+  #' - delta (numeric): The gamma distributed value at which to evaluate the PDF.
   #' - a (numeric): The shape parameter of the Gamma distribution.
   #' - b (numeric): The scale parameter of the Gamma distribution.
   #' - inverse (logical, default = FALSE): If TRUE, computes the log-PDF for the inverse of Delta.
@@ -117,10 +117,10 @@ log_posterior_delta <- function(Y, X, M0, V0, S0, v0, pi1_val, mu_val, gamma_val
   #' Parameters:
   #' - Y (matrix): The observed data matrix of dimensions T_eff x k.
   #' - X (matrix): The predictor matrix of dimensions T_eff x m.
-  #' - M0 (matrix): The mean matrix of dimensions compatible with X %*% M0.
-  #' - V0 (matrix): The covariance matrix used in calculating P_term, of dimensions compatible with X.
-  #' - S0 (matrix): The precision matrix of dimensions q x q, used in the marginal likelihood calculation.
-  #' - v0 (numeric): The degrees of freedom parameter for the marginal likelihood.
+  #' - M0 (matrix): The prior mean matrix of dimensions compatible with X %*% M0.
+  #' - V0 (matrix): The prior covariance matrix used in calculating P_term, of dimensions compatible with X.
+  #' - S0 (matrix): The prior precision matrix of dimensions q x q, used in the marginal likelihood calculation.
+  #' - v0 (numeric): The prior degrees of freedom parameter for the marginal likelihood.
   #' - pi1_val (numeric): The value of the hyper parameter π₁ for which the posterior density is evaluated.
   #' - mu_val (numeric): The value of the hyper parameter μ for which the posterior density is evaluated.
   #' - gamma_val (numeric): The value of the hyper parameter γ for which the posterior density is evaluated.

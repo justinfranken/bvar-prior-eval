@@ -23,8 +23,8 @@ minnesota_prior <- function(Y, p, intercept = FALSE,
   #' - A list containing:
   #'   - M0 (matrix): The prior mean matrix.
   #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).   #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
-  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
-  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - S0 (matrix): The prior scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The prior degrees of freedom for the inverse-Wishart prior.
   
   k <- ncol(Y)
   v0 <- k + 2
@@ -71,8 +71,8 @@ hierarchical_prior <- function(Y, p, intercept = FALSE,
   #' - A list containing:
   #'   - M0 (matrix): The prior mean matrix.
   #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).   #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
-  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
-  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - S0 (matrix): The prior scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The prior degrees of freedom for the inverse-Wishart prior.
   
   k <- ncol(Y)
   v0 <- k + 2
@@ -131,8 +131,8 @@ helper_build_cov_matrix_minnesota <- function(Y, p, v0, s2_diag = NULL, intercep
   #' 
   #' Returns:
   #' - A list containing:
-  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
-  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - S0 (matrix): The prior scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The prior degrees of freedom for the inverse-Wishart prior.
   #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).
   
   k <- ncol(Y)
@@ -175,8 +175,8 @@ helper_build_cov_matrix_hierachical <- function(Y, p, v0, s2_diag = NULL, interc
   #' 
   #' Returns:
   #' - A list containing:
-  #'   - S0 (matrix): The scale matrix for the inverse-Wishart prior (k x k).
-  #'   - v0 (numeric): The degrees of freedom for the inverse-Wishart prior.
+  #'   - S0 (matrix): The prior scale matrix for the inverse-Wishart prior (k x k).
+  #'   - v0 (numeric): The prior degrees of freedom for the inverse-Wishart prior.
   #'   - V0 (matrix): The prior covariance matrix for VAR coefficients (m x m), where (m = k*p) or (1 + k*p) if intercept is included).
   
   k <- ncol(Y)
@@ -271,4 +271,3 @@ hhelper_compute_sigma_vec <- function(Y, p) {
     sqrt(mean(fit$resid^2, na.rm = TRUE))
   })
 }
-

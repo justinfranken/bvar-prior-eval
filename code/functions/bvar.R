@@ -115,3 +115,55 @@ run_bvar_hierarch <- function(Yraw, p, intercept, mh_params, hyper_pars,
   return(res_mh)
 }
 
+
+run_bvar_ssvs <- function(Yraw, p, 
+                          intercept = TRUE, 
+                          use_dummies = FALSE,
+                          dummy_pars = list(mu = 1.0, gamma = 1.0, prior_mean = NULL),
+                          lag_mean = 1,
+                          tau0 = 1/10,
+                          tau1 = 10,
+                          delta_prob = 0.8,
+                          n_draws = 5000,
+                          burnin = 1000){
+  #' Runs a Bayesian VAR model with stochastic search variable selection (SSVS).
+  #'
+  #' Parameters:
+  #' - Yraw (matrix): The raw observed data matrix.
+  #' - p (integer): The lag order for the VAR model.
+  #' - intercept (logical): Indicates whether an intercept term should be included.
+  #' - use_dummies (logical): Indicates whether to include dummy observations.
+  #' - dummy_pars (list): A list of parameters for dummy observations, including:
+  #'      - mu (numeric): Tightness for the initial observational prior (default = 1.0).
+  #'      - gamma (numeric): Tightness for the sum-of-coefficients prior (default = 1.0).
+  #'      - prior_mean: An optional prior mean for the coefficients.
+  #' - lag_mean (numeric): The lag mean parameter used in the Minnesota prior.
+  #' - tau0 (numeric): The scaling factor when a delta element equals 0.
+  #' - tau1 (numeric): The scaling factor when a delta element is 1.
+  #' - delta_prob (numeric): The prior probability for variable inclusion (used in the log-prior for delta).
+  #' - n_draws (integer): Total number of Gibbs sampling iterations.
+  #' - burnin (integer): Number of initial iterations to discard as burn-in.
+  #'
+  #' Returns:
+  #' - A list containing:
+  #'     delta_draws: A matrix of sampled delta vectors (n_draws x length(delta)).
+  #'     Phi: An array of sampled VAR coefficient matrices with dimensions (ncol(X) x k x (n_draws - burnin)).
+  #'     Sigma: An array of sampled error covariance matrices with dimensions (k x k x (n_draws - burnin)).
+  ld_aug <- create_lagged_data(Yraw, p, intercept,
+                               use_dummies,
+                               dummy_pars)
+  Y <- ld_aug$Y
+  X <- ld_aug$X
+  
+  res_ssvs <- run_gs_ssvs(Y = Y, 
+                          X = X, 
+                          intercept = intercept, 
+                          lag_mean = lag_mean, 
+                          tau0 = tau0, 
+                          tau1 = tau1, 
+                          delta_prob = delta_prob, 
+                          n_draws = n_draws, 
+                          burnin = burnin)
+  
+  return(res_ssvs)
+}

@@ -5,9 +5,9 @@ posterior_draw_Phi <- function(M1, Sigma, V1) {
   #' Draws posterior samples of the BVAR coefficient matrix (Phi).
   #' 
   #' Parameters:
-  #' - M1 (matrix): Updated mean matrix of dimensions m x k.
+  #' - M1 (matrix): Posterior mean matrix of dimensions m x k.
   #' - Sigma (matrix): Covariance matrix of dimensions k x k.
-  #' - V1 (matrix): Prior updated covariance matrix of dimensions m x m.
+  #' - V1 (matrix): Posterior covariance matrix of dimensions m x m.
   #' 
   #' Returns:
   #' - A matrix Phi_draw sampled from the posterior distribution of the BVAR coefficients, with dimensions (m x k).
@@ -19,39 +19,20 @@ posterior_draw_Phi <- function(M1, Sigma, V1) {
 }
 
 
-posterior_draw_Sigma <- function(Y, X, Phi_ols, M0, S0, nu0, inv_middle_term) {
+posterior_draw_Sigma <- function(S1, nu1) {
   #' Draws posterior samples of the error covariance matrix (Sigma).
   #' 
   #' Parameters:
-  #' - Y (matrix): Response matrix with dimensions (T_eff x k), where T_eff is the effective number of observations, and k is the number of variables.
-  #' - X (matrix): Design matrix with dimensions (T_eff x m), where m is the number of predictors.
-  #' - Phi_ols (matrix): OLS estimate Phi_hat (m x k).
-  #' - M0 (matrix): Prior mean matrix for Phi (m x k).
-  #' - S0 (matrix): Prior scale matrix for Sigma (k x k).
-  #' - nu0 (numeric): Prior degrees of freedom for Sigma.
-  #' - inv_middle_term(matrix): Precomputed term.
+  #' - S1 (matrix): Posterior scale matrix for Sigma (k x k).
+  #' - nu1 (numeric): Posterior degrees of freedom for Sigma.
   #' 
   #' Returns:
   #' - A matrix Sigma_draw sampled from the posterior inverse-Wishart distribution, with dimensions (k x k).
 
-  E <- Y - X %*% Phi_ols
-  SSE <- crossprod(E)
-  diffPhi <- M0 - Phi_ols
-  
-  second_term <- crossprod(diffPhi, inv_middle_term %*% diffPhi)
-  
-  # posterior dof
-  nu1 <- nu0 + nrow(Y)
-  # posterior scale
-  S1  <- S0 + SSE + second_term
-  
   # draw Sigma from IW(S1, nu1)
   Sigma_draw <- riwish(nu1, S1)
   return(helper_make_positive_definite(Sigma_draw))
 }
-
-
-
 
 
 riwish <- function(df, S){

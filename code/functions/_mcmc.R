@@ -39,16 +39,27 @@ run_gs_minnesota <- function(Y, X, M0, V0, S0, nu0,
   XTY <- crossprod(X, Y)
   M1 <- V1 %*% (V0_inv %*% M0 + XTY)
   
-  # for Sigma draws
+  # - for Sigma draws
   XX_inv <- chol2inv(chol(XX))
   Phi_ols <- crossprod(XX_inv,XTY)
   temp <- V0 + XX_inv
+  diffPhi <- M0 - Phi_ols
   inv_middle_term <- chol2inv(chol(temp))
+  E <- Y - X %*% Phi_ols
+  SSE <- crossprod(E)
+  second_term <- crossprod(diffPhi, inv_middle_term %*% diffPhi)
+  
+  # posterior scale
+  S1  <- S0 + SSE + second_term
+  
+  # posterior dof
+  nu1 <- nu0 + nrow(Y)
+
 
   ## -- draw from posterior
   for(iter in 1:n_draws) {
-    # draw Sigma given Phi
-    Sigma_current <- posterior_draw_Sigma(Y, X, Phi_ols, M0, S0, nu0, inv_middle_term)
+    # draw Sigma
+    Sigma_current <- posterior_draw_Sigma(S1, nu1)
     
     # draw Phi given Sigma
     Phi_current <- posterior_draw_Phi(M1, Sigma_current, V1)
@@ -236,7 +247,7 @@ run_mh_hierarch <- function(Y, X, p, intercept, hyper_params,
       hyper_vals[i / n_thin,] <- delta_draw
       log_post_vec[i / n_thin] <- log_post_draw
       
-      # draw posterior Sigma and Phi
+      # -- draw posterior Sigma and Phi
       XX <- crossprod(X_aug_draw)
       V0_inv <- chol2inv(chol(prior_draw$V0))
       V1_inv <- V0_inv + XX
@@ -251,15 +262,19 @@ run_mh_hierarch <- function(Y, X, p, intercept, hyper_params,
       Phi_ols <- crossprod(XX_inv,XTY)
       temp <- prior_draw$V0 + XX_inv
       inv_middle_term <- chol2inv(chol(temp))
+      E <- Y_aug_draw - X_aug_draw %*% Phi_ols
+      SSE <- crossprod(E)
+      diffPhi <- prior_draw$M0 - Phi_ols
+      second_term <- crossprod(diffPhi, inv_middle_term %*% diffPhi)
+      
+      # posterior scale
+      S1  <- prior_draw$S0 + SSE + second_term
+      
+      # posterior dof
+      nu1 <- prior_draw$v0 + nrow(Y_aug_draw)
       
       # draw Sigma
-      Sigma_current <- posterior_draw_Sigma(Y_aug_draw, 
-                                            X_aug_draw, 
-                                            Phi_ols, 
-                                            prior_draw$M0,
-                                            prior_draw$S0,
-                                            prior_draw$v0, 
-                                            inv_middle_term)
+      Sigma_current <- posterior_draw_Sigma(S1, nu1)
       
       # draw Phi given Sigma
       Phi_current <- posterior_draw_Phi(M1, Sigma_current, V1)
@@ -282,3 +297,101 @@ run_mh_hierarch <- function(Y, X, p, intercept, hyper_params,
   ))
 }
 
+
+run_gs_ssvs <- function(Y, X, intercept = TRUE, lag_mean = 1, 
+                        tau0 = 0.01, tau1 = 10, delta_prob = 0.8,
+                        n_draws = 5000, burnin = 1000) {
+  #' Runs a Gibbs sampler for stochastic search variable selection (SSVS) in a Bayesian VAR.
+  #'
+  #' Parameters:
+  #' - Y (matrix): The observed data matrix with dimensions T_eff x k (T_eff observations and k variables).
+  #' - X (matrix): The design matrix (including lags) with dimensions T_eff x m.
+  #' - intercept (logical): Indicates whether an intercept term is included in the model.
+  #' - lag_mean (numeric): The lag mean parameter used in forming the Minnesota prior.
+  #' - tau0 (numeric): Scaling factor used when the corresponding delta is 0.
+  #' - tau1 (numeric): Scaling factor used when the corresponding delta is 1.
+  #' - delta_prob (numeric): The prior probability for inclusion (used in the log-prior for delta).
+  #' - n_draws (integer): Total number of Gibbs sampling iterations.
+  #' - burnin (integer): Number of initial draws to discard as burn-in.
+  #'
+  #' Returns:
+  #' - A list containing:
+  #'   - delta_draws: A matrix of sampled delta vectors (n_draws x (k*p) or if intercept is TRUE n_draws x (k*p +1)).
+  #'   - Phi: An array of sampled VAR coefficient matrices with dimensions (m x k x (n_draws - burnin)).
+  #'   - Sigma: An array of sampled error covariance matrices with dimensions (k x k x (n_draws - burnin)).
+  T_eff <- nrow(Y)
+  k <- ncol(Y)
+  m <- ncol(X)
+  p <- (m - as.integer(intercept)) / k
+  
+  XX <- crossprod(X)
+  XX_inv <- solve(XX)
+  Xy <- crossprod(X, Y)
+  
+  se_ols <- compute_sigma_ols_VAR(Y, X, XX_inv)
+  
+  # priors
+  temp <- minnesota_prior(Y, p , intercept = intercept, lag_mean = lag_mean)
+  S_lowerbar <- temp$S0
+  v_lowerbar <- temp$v0
+  M0 <- temp$M0
+  v_upperbar <- v_lowerbar + T_eff
+  Phi_ols <- crossprod(XX_inv, Xy)
+  residuals <- Y - X %*% Phi_ols
+  diff_Phi <- M0 - Phi_ols
+  S <- crossprod(residuals)
+  
+  # initialize delta
+  delta_init <- rep(1, ncol(X))  # or some random choice
+  
+  # precompute everything for the initial delta
+  precomp <- precompute_from_delta(delta = delta_init,
+                                   T = T_eff, k = k,
+                                   S_lowerbar = S_lowerbar, v_lowerbar = v_lowerbar,
+                                   tau0 = tau0, tau1 = tau1, se_ols = se_ols,
+                                   XX = XX, XX_inv = XX_inv,
+                                   diff_Phi = diff_Phi, S = S,
+                                   delta_prob = delta_prob)
+  
+  # storage
+  store_delta <- matrix(NA, nrow = n_draws, ncol = length(delta_init))
+  Phi_store <- array(NA, dim=c(m, k, n_draws))
+  Sigma_store <- array(NA, dim=c(k, k, n_draws))
+  
+  # gibbs sampling
+  for (iter in seq_len(n_draws)) {
+    # draw delta and new priors / posteriors
+    precomp <- update_delta_rank1(precomp,
+                                  T = T_eff, k = k,
+                                  S_lowerbar = S_lowerbar, v_lowerbar = v_lowerbar,
+                                  tau0 = tau0, tau1 = tau1, se_ols = se_ols,
+                                  XX = XX, XX_inv = XX_inv,
+                                  diff_Phi = diff_Phi, S = S,
+                                  delta_prob = delta_prob)
+    # store delta
+    store_delta[iter, ] <- precomp$delta
+    
+    # draw coefficients Phi and Sigma
+    if(iter > burnin){
+      # draw Sigma
+      Sigma_current <- posterior_draw_Sigma(precomp$S_upperbar, v_upperbar)
+      
+      # draw Phi given Sigma
+      M1 <- precomp$P_inv %*% (precomp$inv_Omega_lowerbar %*% M0 + Xy)
+      Phi_current <- posterior_draw_Phi(M1, Sigma_current, precomp$P_inv)
+      
+      # store coefficients
+      Phi_store[,,iter] <- Phi_current
+      Sigma_store[,,iter] <- Sigma_current
+    }
+  }
+  
+  # drop burn-in
+  keep_idx <- seq.int(from = burnin + 1, to = n_draws)
+  Phi_out <- Phi_store[,, keep_idx, drop=FALSE]
+  Sigma_out <- Sigma_store[,, keep_idx, drop=FALSE]
+  
+  return(list(delta_draws = store_delta,
+              Phi = Phi_out,
+              Sigma = Sigma_out))
+}
