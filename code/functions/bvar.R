@@ -14,7 +14,6 @@ run_bvar_minnesota <- function(Yraw, p, intercept = FALSE,
   #' - Yraw (matrix): The dataset (T x k), where T is the number of time points and k is the number of variables.
   #' - p (integer): The lag order of the VAR model.
   #' - intercept (logical): Whether to include an intercept term in the model (default = FALSE).
-  #' Note: If working with an intercept, scaling up % values to larger numbers (0.05 -> 5) can resolve non-positive matrix issues.
   #' - use_dummies (logical): Whether to augment the dataset with dummy observations (default = FALSE).
   #' - dummy_pars (list): Parameters for the dummy observations, including:
   #'   - mu (numeric): Tightness for the initial observational prior (default = 1.0).
@@ -65,7 +64,7 @@ run_bvar_minnesota <- function(Yraw, p, intercept = FALSE,
 }
 
 
-run_bvar_hierarch <- function(Yraw, p, intercept, mh_params, hyper_pars,
+run_bvar_hierarch <- function(Yraw, p, intercept, mh_params, hyper_params,
                               pi4 = 1000, lag_mean = 1,
                               n_draws = 5000, burnin = 1000){
   #' Runs a hierarchical Bayesian Vector Autoregression (BVAR) model using Metropolis-Hastings MCMC.
@@ -81,7 +80,8 @@ run_bvar_hierarch <- function(Yraw, p, intercept, mh_params, hyper_pars,
   #'   - acc_upper (numeric): The upper threshold for the acceptance rate to adjust the proposal covariance.
   #'   - acc_lower (numeric): The lower threshold for the acceptance rate to adjust the proposal covariance.
   #'   - acc_change (numeric): The amount by which to adjust the proposal covariance based on the acceptance rate.
-  #' - hyper_pars (list): A list containing hyperparameters for the prior distributions of hyper parameters. It should include elements like pi1_param, mu_param, gamma_param, and s2_diag_param, each containing mode, a, and b values.
+  #' - hyper_params (list): A list containing hyperparameters for the prior distributions of hyper parameters. 
+  #' It should include elements like pi1_param, mu_param, gamma_param, and s2_diag_param, each containing mode, a, and b values.
   #' - pi4 (numeric, default = 1000): Variance scaling for the intercept.
   #' - lag_mean (integer, default = 1): Mean for the diagonal elements of the lag coefficients.
   #' - n_draws (integer, default = 5000): The total number of MCMC draws to generate.

@@ -362,20 +362,20 @@ hhelper_make_stationary_A <- function(A_list, K) {
 
 
 
-K = 10
-p = 3
-T = 40
-
-# no shocks
-ts.plot(sim_y(K, p, T,
-              min_indiv_shocks = 0,
-              max_indiv_shocks = 0,
-              min_high_vol_periods = 0,
-              max_high_vol_periods = 0,
-              min_exog_shocks = 0,
-              max_exog_shocks = 0),
-        col=1:K, main= "No shocks", ylim = c(-0.25, 0.25))
-abline(h = 0, col = "black", lty = 2)
+# K = 10
+# p = 3
+# T = 40
+# 
+# # no shocks
+# ts.plot(sim_y(K, p, T,
+#               min_indiv_shocks = 0,
+#               max_indiv_shocks = 0,
+#               min_high_vol_periods = 0,
+#               max_high_vol_periods = 0,
+#               min_exog_shocks = 0,
+#               max_exog_shocks = 0),
+#         col=1:K, main= "No shocks", ylim = c(-0.25, 0.25))
+# abline(h = 0, col = "black", lty = 2)
 # 
 # # individual shocks
 # ts.plot(sim_y(K, p, T,

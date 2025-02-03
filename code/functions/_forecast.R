@@ -1,148 +1,155 @@
-# functions to predict coefficient draws from raw data
+# functions to predict from coefficient draws and measure errors.
 
 
-predict_bvar <- function(Phi_store, Sigma_store, 
-                         Yraw, p, H = 4, 
-                         draw_shocks = TRUE,
-                         intercept = FALSE,
-                         n_cores = 4) {
-  #' Produces H-step ahead forecasts for a Bayesian VAR model using posterior draws of 
-  #' the coefficient matrix (Phi_store) and covariance matrix (Sigma_store). Forecasts are computed 
-  #' for each posterior draw, given the last p observations from the dataset.
-  #' 
+bvar_forecast <- function(
+    Y,              # T x k data matrix (we only need last p rows of Y for the starting values)
+    phi_draws,      # Array of dimension ((k*p)+1) x k x M
+    Sigma_draws,    # Array of dimension k x k x M
+    p,              # Number of lags
+    h,              # Forecast horizon
+    alpha = 0.05    # Significance level for intervals
+) {
+  #' Generates forecasts from a Bayesian VAR model based on posterior draws.
+  #'
   #' Parameters:
-  #' - Phi_store (array): A 3D array of VAR coefficients with dimensions [p*k, k, n_post_draws], 
-  #' where n_post_draws is the number of posterior draws.
-  #' - Sigma_store (array): A 3D array of covariance matrices with dimensions [k, k, n_post_draws].
-  #' - Yraw (matrix): The full dataset (T x k), where T is the number of observations, and k is the 
-  #' number of variables.
-  #' - p (integer): The lag order of the VAR model.
-  #' - H (integer): Forecast horizon, i.e., how many steps ahead to predict (default = 4).
-  #' - draw_shocks (logical): Whether to sample random shocks from the covariance matrix for each 
-  #' forecast step (default = TRUE).
-  #' - intercept (logical): Whether the Phi_store includes an intercept term (default = FALSE).
-  #' - n_cores (integer): Number of parallel R sessions (processes) that will be used to execute prediction.
-  #' 
+  #' - Y (matrix): A T x k data matrix. Only the last p rows are used as initial conditions.
+  #' - phi_draws (array): An array of posterior draws of the VAR coefficients, with dimensions 
+  #'   ((k*p)+1) x k x M, where the first row represents the intercept.
+  #' - Sigma_draws (array): An array of posterior draws of the error covariance matrix, with 
+  #'   dimensions k x k x M.
+  #' - p (integer): The number of lags in the VAR model.
+  #' - h (integer): The forecast horizon, i.e., the number of periods ahead to forecast.
+  #' - alpha (numeric, default = 0.05): The significance level used to compute forecast 
+  #'   prediction intervals (e.g., a 95% interval when alpha = 0.05).
+  #'
   #' Returns:
-  #' - A 3D array of forecasts with dimensions [H, k, n_post_draws], where H is the forecast horizon, 
-  #' k is the number of variables, and n_post_draws is the number of posterior draws.
+  #' - A list containing:
+  #'   - median: An h x k matrix of median forecasts for each horizon and variable.
+  #'   - lower: An h x k matrix of lower quantile forecasts (alpha/2 quantile).
+  #'   - upper: An h x k matrix of upper quantile forecasts (1 - alpha/2 quantile).
+  #'   - draws: An array of all forecast draws with dimensions h x k x M.
 
-  k <- ncol(Yraw)
-  T_data <- nrow(Yraw)
-  Y_last_p <- Yraw[(T_data - p + 1):T_data, , drop = FALSE]
-  n_post_draws <- dim(Phi_store)[3]
+  Tfull <- nrow(Y)
+  k     <- ncol(Y)
+  M     <- dim(phi_draws)[3]
   
-  # initiate future.apply 
-  plan(multisession, workers = n_cores)
+  # storage
+  forecast_draws <- array(NA, dim = c(h, k, M))
   
-  forecast_list <- future_lapply(seq_len(n_post_draws), function(i) {
-    Phi_draw_i   <- Phi_store[ , , i]
-    Sigma_draw_i <- Sigma_store[ , , i]
+  # extract the last p observations from the data
+  Y_init <- Y[(Tfull - p + 1):Tfull, , drop = FALSE]
+  
+  for (j in 1:M) {
     
-    helper_forecast_from_draw(
-      Phi_draw_init = Phi_draw_i,
-      Sigma_draw    = Sigma_draw_i,
-      Y_last_p      = Y_last_p,
-      H             = H,
-      draw_shocks   = draw_shocks,
-      intercept     = intercept
-    )
-  },
-  future.seed = TRUE)
-  # reset to standard environment
-  plan(sequential)  
-  
-  Y_forecasts <- array(
-    unlist(forecast_list),
-    dim = c(H, k, n_post_draws),
-    dimnames = list(paste0("T+", 1:H), colnames(Yraw), NULL)
-  )
-  return(Y_forecasts)
-}
-
-
-
-helper_forecast_from_draw <- function(Phi_draw_init, Sigma_draw,
-                               Y_last_p,
-                               H = 4,
-                               draw_shocks = TRUE,
-                               intercept = FALSE) {
-  #' Produces H-step ahead forecasts based on a VAR(p) model, given the last p 
-  #' observations, a draw of the coefficient matrix (Phi_draw), and the covariance matrix (Sigma_draw). 
-  #' Optionally, it can include an intercept and draw random shocks to incorporate predictive uncertainty.
-  #' 
-  #' Parameters:
-  #' - Phi_draw_init (matrix): A (p*k) x k matrix of VAR coefficients, optionally including an intercept as the first row.
-  #' - Sigma_draw (matrix): A k x k covariance matrix for the shocks.
-  #' - Y_last_p (matrix): A p x k matrix of the last p observations, ordered in ascending time (row 1 is the oldest, row p is the most recent).
-  #' - H (integer): Forecast horizon, i.e., how many steps ahead to predict (default = 4).
-  #' - draw_shocks (logical): Whether to include random shocks in the forecast (default = TRUE).
-  #' - intercept (logical): Whether Phi_draw_init includes an intercept in the first row (default = FALSE).
-  #' 
-  #' Returns:
-  #' - A H x k matrix of forecasts, with rows representing time steps and columns representing variables.
-  
-  k <- ncol(Y_last_p)
-  p <- nrow(Phi_draw_init) / k
-  
-  Phi_intercept <- rep(0, k)
-  if (intercept) {
-    Phi_intercept <- Phi_draw_init[1, ]
-    Phi_draw      <- Phi_draw_init[-1, ]
-  } else {
-    Phi_draw      <- Phi_draw_init
-  }
-  
-  Phi_list <- hhelper_reshape_phi(Phi_draw, k, p)
-  
-  Y_future <- matrix(NA, nrow = H, ncol = k,
-                     dimnames = list(paste0("T+", 1:H), colnames(Y_last_p)))
-  
-  # Start buffer from last p observed data
-  Y_buffer <- Y_last_p
-  
-  for (h in seq_len(H)) {
-    # sum_{ell=1 to p} (Phi_list[[ell]] %*% Y_buffer[p-(ell-1), ])
-    Y_next_mean <- Reduce(
-      f = `+`,
-      x = lapply(seq_len(p), function(ell) {
-        Phi_list[[ell]] %*% Y_buffer[p - (ell - 1), ]
-      })
-    )
+    # current draws
+    Phi_j   <- phi_draws[ , , j]
+    Sigma_j <- Sigma_draws[ , , j]
+    chol_Sig_j <- chol(Sigma_j)
     
-    if (draw_shocks) {
-      e_t <- mvrnorm(1, mu = rep(0, k), Sigma = Sigma_draw)
-    } else {
-      e_t <- rep(0, k)
+    Y_hat_j <- matrix(0, nrow = h, ncol = k)
+    current_stack <- rbind(Y_init, matrix(NA, nrow = h, ncol = k))
+    
+    # forecast recursively
+    for (step in 1:h) {
+      # intercept
+      intercept <- Phi_j[1, ]
+      
+      # summation of p lags
+      lag_contrib <- rep(0, k)
+      for (lag_i in 1:p) {
+        row_start <- 1 + (lag_i - 1)*k + 1
+        row_end   <- row_start + k - 1
+        Phi_lag_i <- Phi_j[row_start:row_end, ]
+        lag_contrib <- lag_contrib + Phi_lag_i %*% current_stack[p + step - lag_i, ]
+      }
+      
+      # random errors
+      eps_j <- crossprod(chol_Sig_j, rnorm(k))
+      
+      # new forecast
+      Y_new <- intercept + lag_contrib + eps_j
+      current_stack[p + step, ] <- Y_new
+      
+      # save it
+      Y_hat_j[step, ] <- Y_new
     }
     
-    Y_next <- as.numeric(Phi_intercept + Y_next_mean + e_t)
-    Y_future[h, ] <- Y_next
-    
-    # Update buffer
-    Y_buffer <- rbind(Y_buffer[-1, ], Y_next)
+    # store
+    forecast_draws[, , j] <- Y_hat_j
   }
-  return(Y_future)
+  
+  # compute median and prediction quantiles
+  fc_median <- apply(forecast_draws, c(1,2), median)
+  fc_lower  <- apply(forecast_draws, c(1,2), quantile, probs = alpha/2)
+  fc_upper  <- apply(forecast_draws, c(1,2), quantile, probs = 1 - alpha/2)
+  
+  return(list(
+    median  = fc_median,
+    lower   = fc_lower,
+    upper   = fc_upper,
+    draws   = forecast_draws
+  ))
 }
 
 
-hhelper_reshape_phi <- function(Phi_draw, k, p) {
-  #' Takes a matrix with dimensions (p*k) x k and reshapes it into a list of p 
-  #' matrices, each with dimensions k x k. Each matrix corresponds to a specific lag in a VAR model.
-  #' 
+fcst_rmse <- function(fcst_obj, Ypred, h, k){
+  #' Computes the root mean squared error (RMSE) for forecasts.
+  #'
   #' Parameters:
-  #' - Phi_draw (matrix): A (p*k) x k matrix to be reshaped.
-  #' - k (integer): Number of variables in the VAR model.
-  #' - p (integer): Number of lags in the VAR model.
-  #' 
+  #' - fcst_obj (list): A forecast object from bvar_forecast().
+  #' - Ypred (matrix): A matrix of true values for the forecast period, with dimensions h x k.
+  #' - h (integer): The forecast horizon (number of steps ahead).
+  #' - k (integer): The number of variables being forecast.
+  #'
   #' Returns:
-  #' - A list of p matrices, where each matrix has dimensions k x k.
+  #' - A list containing:
+  #'   - row_rmse: An h x 1 matrix of RMSE values computed for each forecast horizon (across variables).
+  #'   - col_rmse: A 1 x k matrix of RMSE values computed for each variable (across forecast horizons).
+  #'   - all_rmse: A single numeric value representing the overall RMSE across all forecasts.
   
-  Phi_list <- vector("list", length = p)
-  for (ell in seq_len(p)) {
-    row_start <- (ell - 1) * k + 1
-    row_end   <- ell * k
-    Phi_list[[ell]] <- Phi_draw[row_start:row_end, , drop = FALSE]
+  # h-step ahead forecast
+  row_rmse_obj <- matrix(rep(NA, h), ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+  for (i in 1:h) {
+    row_rmse_obj[i,] <- sqrt(mean((fcst_obj$median[i,] - Ypred[i,])^2))
   }
-  return(Phi_list)
+  
+  # variable forecast
+  col_rmse_obj <- matrix(rep(NA, k), nrow = 1, dimnames = list("T1 ... Th", paste0("Y", 1:k)))
+  for (i in 1:k) {
+    col_rmse_obj[,i] <- sqrt(mean((fcst_obj$median[,i] - Ypred[,i])^2))
+  }
+  
+  # total rmse
+  all_rmse_obj <- sqrt(mean((fcst_obj$median - Ypred)^2))
+  
+  return(list(
+    row_rmse = row_rmse_obj,
+    col_rmse = col_rmse_obj,
+    all_rmse = all_rmse_obj
+  ))
+}
+
+
+fcst_pred_int_acc <- function(fcst_obj, Ypred, h){
+  #' Evaluates the forecast prediction interval accuracy.
+  #'
+  #' Parameters:
+  #' - fcst_obj (list): A forecast object from bvar_forecast().
+  #' - Ypred (matrix): A matrix of true values for the forecast period, with dimensions h x k.
+  #' - h (integer): The forecast horizon (number of steps ahead).
+  #'
+  #' Returns:
+  #' - A matrix of dimensions h x 1 where each entry is 1 if the true value for that forecast horizon 
+  #'   falls within the prediction interval for at least one variable, and 0 otherwise.
+  
+  result <- matrix(0, nrow = h, ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+  
+  for (i in 1:h) {
+    temp <- (fcst_obj$lower[i,] <= Ypred[i,]) & (Ypred[i,] <= fcst_obj$upper[i,])
+    
+    # if in pred interval 1, else 0
+    result[i,] <- ifelse(any(temp), 1, 0)
+  }
+  
+  return(result)
 }

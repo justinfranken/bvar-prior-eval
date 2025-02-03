@@ -2,7 +2,7 @@
 
 
 run_gs_minnesota <- function(Y, X, M0, V0, S0, nu0,
-                                  n_draws=5000, burnin=1000) {
+                                  n_draws = 5000, burnin = 1000) {
   #' Performs Gibbs Sampling to estimate a BVAR model using a Minnesota prior for the VAR coefficients and an inverse-Wishart prior for the error covariance matrix. 
   #' The posterior samples for the VAR coefficients Phi and the error covariance matrix Sigma are stored and returned after discarding the burn-in period.
   #' 
@@ -71,8 +71,8 @@ run_gs_minnesota <- function(Y, X, M0, V0, S0, nu0,
   
   # drop burn-in
   keep_idx <- seq.int(from = burnin + 1, to = n_draws)
-  Phi_out <- Phi_store[,, keep_idx, drop=FALSE]
-  Sigma_out <- Sigma_store[,, keep_idx, drop=FALSE]
+  Phi_out <- Phi_store[,, keep_idx, drop = FALSE]
+  Sigma_out <- Sigma_store[,, keep_idx, drop = FALSE]
   
   return(list(
     Phi = Phi_out,
@@ -232,7 +232,7 @@ run_mh_hierarch <- function(Y, X, p, intercept, hyper_params,
       if(i > 0) {accepted <- accepted + 1}
     }
     
-    # adjust hessian in burn-in phase
+    # adjust hessian in burn-in phase every 10th draw
     if(i <= - as.integer(adjust_burn * burnin) && (i + burnin) %% 10 == 0){
       acc_rate <- accepted_adj / (i + burnin)
       if(acc_rate < acc_lower){
@@ -319,6 +319,7 @@ run_gs_ssvs <- function(Y, X, intercept = TRUE, lag_mean = 1,
   #'   - delta_draws: A matrix of sampled delta vectors (n_draws x (k*p) or if intercept is TRUE n_draws x (k*p +1)).
   #'   - Phi: An array of sampled VAR coefficient matrices with dimensions (m x k x (n_draws - burnin)).
   #'   - Sigma: An array of sampled error covariance matrices with dimensions (k x k x (n_draws - burnin)).
+  
   T_eff <- nrow(Y)
   k <- ncol(Y)
   m <- ncol(X)
@@ -388,8 +389,8 @@ run_gs_ssvs <- function(Y, X, intercept = TRUE, lag_mean = 1,
   
   # drop burn-in
   keep_idx <- seq.int(from = burnin + 1, to = n_draws)
-  Phi_out <- Phi_store[,, keep_idx, drop=FALSE]
-  Sigma_out <- Sigma_store[,, keep_idx, drop=FALSE]
+  Phi_out <- Phi_store[,, keep_idx, drop = FALSE]
+  Sigma_out <- Sigma_store[,, keep_idx, drop = FALSE]
   
   return(list(delta_draws = store_delta,
               Phi = Phi_out,

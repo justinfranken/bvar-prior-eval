@@ -16,6 +16,7 @@ sherman_morrison_update <- function(A_inv, A_logdet, u, v) {
   #'   - logdet: The updated log-determinant.
 
   denom <- as.numeric(1 + (t(v) %*% A_inv %*% u))
+  
   # if (abs(denom) < 1e-15) {
   #   stop("Rank-1 update denominator numerically zero; check stability.")
   # }
@@ -50,6 +51,7 @@ build_Omega_lowerbar <- function(delta, tau0, tau1, se_ols) {
   diag_entries <- ifelse(delta == 0,
                          (tau0 * se_ols)^2,
                          (tau1 * se_ols)^2)
+  
   return(diag(diag_entries))
 }
 
@@ -71,6 +73,7 @@ build_inv_Omega_lowerbar <- function(delta, tau0, tau1, se_ols) {
   diag_entries <- ifelse(delta == 0,
                          1/((tau0 * se_ols)^2),
                          1/((tau1 * se_ols)^2))
+  
   return(diag(diag_entries))
 }
 
@@ -87,6 +90,7 @@ pi_delta <- function(delta, p = 0.8) {
   
   m <- length(delta)
   s <- sum(delta)
+  
   return(s*log(p) + (m - s)*log(1 - p))
 }
 
@@ -275,7 +279,6 @@ toggle_delta_rank1 <- function(precomp_list,
   delta_new <- delta_old
   delta_new[i] <- delta_new_i
   
-
   e_i <- numeric(length(delta_old))
   e_i[i] <- 1
   
@@ -381,6 +384,7 @@ update_delta_rank1 <- function(precomp,
     p_i <- exp(u_flip - lmax) / (exp(u_flip - lmax) + exp(u_current - lmax))
     
     draw_i <- rbinom(n = 1, size = 1, prob = p_i)
+    
     if (draw_i == 1) {
       # Accept the flip => updated precomp
       precomp <- toggled_precomp
