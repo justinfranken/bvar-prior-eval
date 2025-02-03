@@ -192,7 +192,7 @@ Y_forecast_gibs <- predict_bvar(
   Yraw        = Yraw,
   p           = p_bvar,
   H           = h,
-  draw_shocks = TRUE,
+  draw_shocks = FALSE,
   intercept = intercept,
   n_cores = 2
 )
