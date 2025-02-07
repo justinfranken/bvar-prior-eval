@@ -2,12 +2,14 @@
 
 
 bvar_forecast <- function(
-    Y,              # T x k data matrix (we only need last p rows of Y for the starting values)
-    phi_draws,      # Array of dimension ((k*p)+1) x k x M
-    Sigma_draws,    # Array of dimension k x k x M
-    p,              # Number of lags
-    h,              # Forecast horizon
-    alpha = 0.05    # Significance level for intervals
+    Y, 
+    phi_draws, 
+    Sigma_draws, 
+    p, 
+    h, 
+    alpha = 0.05, 
+    intercept = TRUE,
+    draw_shocks = TRUE
 ) {
   #' Generates forecasts from a Bayesian VAR model based on posterior draws.
   #'
@@ -21,6 +23,10 @@ bvar_forecast <- function(
   #' - h (integer): The forecast horizon, i.e., the number of periods ahead to forecast.
   #' - alpha (numeric, default = 0.05): The significance level used to compute forecast 
   #'   prediction intervals (e.g., a 95% interval when alpha = 0.05).
+  #' - intercept (logical, default = TRUE): If TRUE, include an intercept in the 
+  #'   forecast. If FALSE, the intercept is set to zero and the first row of phi_draws is 
+  #'   ignored in the calculation.
+  #' - draw_shocks: If FALSE, no shocks will be drawn. If TRUE, shocks will be drawn.
   #'
   #' Returns:
   #' - A list containing:
@@ -28,60 +34,75 @@ bvar_forecast <- function(
   #'   - lower: An h x k matrix of lower quantile forecasts (alpha/2 quantile).
   #'   - upper: An h x k matrix of upper quantile forecasts (1 - alpha/2 quantile).
   #'   - draws: An array of all forecast draws with dimensions h x k x M.
-
+  
   Tfull <- nrow(Y)
   k     <- ncol(Y)
   M     <- dim(phi_draws)[3]
   
-  # storage
+  # Storage for forecast draws: h steps, k variables, M draws
   forecast_draws <- array(NA, dim = c(h, k, M))
   
-  # extract the last p observations from the data
+  # Extract the last p observations from the data
   Y_init <- Y[(Tfull - p + 1):Tfull, , drop = FALSE]
+  
+  # Define the offset and how we handle the intercept
+  offset <- if (intercept) 1 else 0
   
   for (j in 1:M) {
     
     # current draws
-    Phi_j   <- phi_draws[ , , j]
+    Phi_j   <- phi_draws[ , , j]  # ( (k*p) + 1 ) x k
     Sigma_j <- Sigma_draws[ , , j]
     chol_Sig_j <- chol(Sigma_j)
     
+    # Prepare matrix to hold forecasts for draw j
     Y_hat_j <- matrix(0, nrow = h, ncol = k)
     current_stack <- rbind(Y_init, matrix(NA, nrow = h, ncol = k))
     
     # forecast recursively
     for (step in 1:h) {
-      # intercept
-      intercept <- Phi_j[1, ]
       
-      # summation of p lags
+      # Intercept: either take the first row of Phi_j or set to zero
+      if (intercept) {
+        inter <- Phi_j[1, ]
+      } else {
+        inter <- rep(0, k)
+      }
+      
+      # Summation of p lags
       lag_contrib <- rep(0, k)
       for (lag_i in 1:p) {
-        row_start <- 1 + (lag_i - 1)*k + 1
+        # Identify the rows in Phi_j that correspond to the lag_i-th lag
+        # If we have an intercept row, we shift by 1
+        row_start <- offset + (lag_i - 1) * k + 1
         row_end   <- row_start + k - 1
+        
         Phi_lag_i <- Phi_j[row_start:row_end, ]
+        
+        # multiply by the appropriate row in current_stack
         lag_contrib <- lag_contrib + Phi_lag_i %*% current_stack[p + step - lag_i, ]
       }
       
       # random errors
       eps_j <- crossprod(chol_Sig_j, rnorm(k))
+      if(!draw_shocks) eps_j = rep(0, k)
       
       # new forecast
-      Y_new <- intercept + lag_contrib + eps_j
+      Y_new <- inter + lag_contrib + eps_j
       current_stack[p + step, ] <- Y_new
       
       # save it
       Y_hat_j[step, ] <- Y_new
     }
     
-    # store
+    # store forecasts for this draw
     forecast_draws[, , j] <- Y_hat_j
   }
   
   # compute median and prediction quantiles
-  fc_median <- apply(forecast_draws, c(1,2), median)
-  fc_lower  <- apply(forecast_draws, c(1,2), quantile, probs = alpha/2)
-  fc_upper  <- apply(forecast_draws, c(1,2), quantile, probs = 1 - alpha/2)
+  fc_median <- apply(forecast_draws, c(1, 2), median)
+  fc_lower  <- apply(forecast_draws, c(1, 2), quantile, probs = alpha/2)
+  fc_upper  <- apply(forecast_draws, c(1, 2), quantile, probs = 1 - alpha/2)
   
   return(list(
     median  = fc_median,

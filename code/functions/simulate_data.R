@@ -5,7 +5,7 @@ sim_y <- function(K,
                   p, 
                   T,
                   # --- PARAMETERS FOR TIME SERIES SHOCKS ----------------------
-                  init_sd = 0.015,
+                  init_sd = 0.025,
                   # --- individual shocks -----------------------
                   min_indiv_shocks = 0,
                   max_indiv_shocks = 0,
@@ -69,17 +69,17 @@ sim_y <- function(K,
     Y[t, ] <- Y_t + eps[t, ]
   }
   
-  return(Y[(p+1):(T + p), ])
+  return(Y[(p+1):(T + p), ] * 100)
 }
 
 
 helper_coefficient_generator <- function(p, 
                                          K, 
-                                         d_min = 0.2,
-                                         d_max = 0.4, 
+                                         d_min = 0.30,
+                                         d_max = 0.40, 
                                          off_d_mean = 0, 
                                          off_d_sd = 0.05,
-                                         persistence_factor = 0.4) {
+                                         persistence_factor = 0.40) {
   #' Helper function which creates a list of p many K*K VAR coefficient 
   #' matrices, which decay lineally with increasing lags p.
   #' 
@@ -107,7 +107,7 @@ helper_coefficient_generator <- function(p,
     
     A_raw <- matrix(0, nrow=K, ncol=K)
 
-    # Generate elements with persistence
+    # generate elements with persistence
     for (r in 1:K) {
       for (col in 1:K) {
         if (r != col) {
@@ -116,7 +116,7 @@ helper_coefficient_generator <- function(p,
             base_value <- rnorm(1, mean = persistence_factor * prev_A[r, col], sd = off_diag_sd)
             A_raw[r, col] <- base_value + prev_sign * abs(rnorm(1, mean = off_diag_mean, sd = off_diag_sd))
           } else {
-            # Initial lag coefficients sampled independently
+            # initial lag coefficients sampled independently
             A_raw[r, col] <- rnorm(1, mean = off_diag_mean, sd = off_diag_sd)
           }
         }
@@ -127,8 +127,8 @@ helper_coefficient_generator <- function(p,
             A_raw[r, col] <- base_value + prev_sign * abs(runif(1, min = diag_min, max = diag_max))
           }
           else{
-            # Initial lag coefficients sampled independently
-            diag_sign <- sample(c(-1,1), 1, prob = c(0.90, 0.10))
+            # initial lag coefficients sampled independently
+            diag_sign <- sample(c(-1,1), 1, prob = c(0.95, 0.05))
             A_raw[r, col] <- runif(1, min = diag_min, max = diag_max) * diag_sign
           }
         }
@@ -150,31 +150,31 @@ helper_coefficient_generator <- function(p,
 
 helper_eps_generator <- function(K, 
                                  T, 
-                                 shock_diag_min = 0.05,
-                                 shock_diag_max = 0.1, 
-                                 mean_vola = 0.03, 
-                                 sd_vola = 0.01,
+                                 shock_diag_min = 0.30,
+                                 shock_diag_max = 0.40, 
+                                 mean_vola = 0.025, 
+                                 sd_vola = 0.007,
                                  # --- individual shocks -----------------------
                                  min_indiv_shocks,
                                  max_indiv_shocks,
                                  indiv_shock_length_min,
                                  indiv_shock_length_max,
-                                 indiv_shock_ampl_min = 0.075,
-                                 indiv_shock_ampl_max = 0.2,
+                                 indiv_shock_ampl_min = 0.07,
+                                 indiv_shock_ampl_max = 0.125,
                                  indiv_shock_decay = 0.5,
                                  # --- high volatility period ------------------
                                  min_high_vol_periods,
                                  max_high_vol_periods,
                                  high_vol_period_length_min,
                                  high_vol_period_length_max,
-                                 high_vol_strength_min = 2,
-                                 high_vol_strength_max = 3.5,
+                                 high_vol_strength_min = 2.0,
+                                 high_vol_strength_max = 2.5,
                                  # --- exogenous shocks ------------------------
                                  min_exog_shocks,
                                  max_exog_shocks,
                                  exog_shock_length_min,
                                  exog_shock_length_max,
-                                 exog_shock_ampl_min = 0.075,
+                                 exog_shock_ampl_min = 0.10,
                                  exog_shock_ampl_max = 0.15,
                                  exog_shock_decay = 0.5,
                                  exog_shock_shift_range = 3) {
@@ -362,8 +362,8 @@ hhelper_make_stationary_A <- function(A_list, K) {
 
 
 
-# K = 10
-# p = 3
+# K = 7
+# p = 2
 # T = 40
 # 
 # # no shocks
@@ -374,7 +374,7 @@ hhelper_make_stationary_A <- function(A_list, K) {
 #               max_high_vol_periods = 0,
 #               min_exog_shocks = 0,
 #               max_exog_shocks = 0),
-#         col=1:K, main= "No shocks", ylim = c(-0.25, 0.25))
+#         col=1:K, main= "No shocks", ylim = c(-12, 12))
 # abline(h = 0, col = "black", lty = 2)
 # 
 # # individual shocks
@@ -385,7 +385,7 @@ hhelper_make_stationary_A <- function(A_list, K) {
 #               max_high_vol_periods = 0,
 #               min_exog_shocks = 0,
 #               max_exog_shocks = 0),
-#         col=1:K, main= "Individual shocks", ylim = c(-0.25, 0.25))
+#         col=1:K, main= "Individual shocks", ylim = c(-30, 30))
 # abline(h = 0, col = "black", lty = 2)
 # 
 # # exogenous shocks
@@ -396,7 +396,7 @@ hhelper_make_stationary_A <- function(A_list, K) {
 #               max_high_vol_periods = 2,
 #               min_exog_shocks = 1,
 #               max_exog_shocks = 2),
-#         col=1:K, main= "Exogenous shocks", ylim = c(-0.25, 0.25))
+#         col=1:K, main= "Exogenous shocks", ylim = c(-30, 30))
 # abline(h = 0, col = "black", lty = 2)
 # 
 # # individual and exogenous shocks
@@ -407,5 +407,5 @@ hhelper_make_stationary_A <- function(A_list, K) {
 #               max_high_vol_periods = 2,
 #               min_exog_shocks = 1,
 #               max_exog_shocks = 2),
-#         col=1:K, main= "Individual and exogenous shocks", ylim = c(-0.25, 0.25))
+#         col=1:K, main= "Individual and exogenous shocks", ylim = c(-30, 30))
 # abline(h = 0, col = "black", lty = 2)

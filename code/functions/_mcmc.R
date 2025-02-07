@@ -316,9 +316,9 @@ run_gs_ssvs <- function(Y, X, intercept = TRUE, lag_mean = 1,
   #'
   #' Returns:
   #' - A list containing:
-  #'   - delta_draws: A matrix of sampled delta vectors (n_draws x (k*p) or if intercept is TRUE n_draws x (k*p +1)).
   #'   - Phi: An array of sampled VAR coefficient matrices with dimensions (m x k x (n_draws - burnin)).
   #'   - Sigma: An array of sampled error covariance matrices with dimensions (k x k x (n_draws - burnin)).
+  #'   - delta_draws: A matrix of sampled delta vectors (n_draws x (k*p) or if intercept is TRUE n_draws x (k*p +1)).
   
   T_eff <- nrow(Y)
   k <- ncol(Y)
@@ -392,7 +392,8 @@ run_gs_ssvs <- function(Y, X, intercept = TRUE, lag_mean = 1,
   Phi_out <- Phi_store[,, keep_idx, drop = FALSE]
   Sigma_out <- Sigma_store[,, keep_idx, drop = FALSE]
   
-  return(list(delta_draws = store_delta,
-              Phi = Phi_out,
-              Sigma = Sigma_out))
+  return(list(Phi = Phi_out,
+              Sigma = Sigma_out,
+              delta_draws = store_delta
+  ))
 }

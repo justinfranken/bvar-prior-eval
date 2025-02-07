@@ -47,37 +47,7 @@ download_revenue_data <- function(ticker, corp_name){
 }
 
 
-transform_to_stationary <- function(data) {
-  #' Computes log differences for growth rates and adjusts quarterly input data 
-  #' by trends and seasonality.
-  #' 
-  #' Parameters:
-  #' - data (data.frame): Data.frame from download_revenue_data.
-  #' 
-  #' Returns:
-  #' - Trend and seasonal adjusted logarithmic matrix of growth rates.
-
-  # take the natural logarithm of the data
-  log_data <- log(data$revenue)
-  
-  # de-trending and de-seasonalizing adjustment
-  ts_log_data <- ts(log_data, frequency = 4)
-  decomposed <- stl(ts_log_data, s.window = "periodic")
-  seasonally_adjusted <- decomposed$time.series[, "remainder"]
-  
-  # calculate the first differences of the seasonally adjusted data
-  diff_log_data <- diff(seasonally_adjusted)
-  
-  # convert result to a data.frame
-  out <- data.frame(matrix(NA, dim(data)[1], 2))
-  out[,1] <- data$date
-  out[,2] <- matrix(c(NA, diff_log_data), ncol = 1)
-  
-  return(out)
-}
-
-
-fn <- function(data){
+transform_to_stationary <- function(data){
   data$date <- as.Date(data$date)
   
   # Sort the data by date (just in case it's not already sorted)
@@ -90,17 +60,43 @@ fn <- function(data){
   data$log_diff <- c(NA, diff(data$log_revenue, lag = 1))
   
   # Log + Seasonal Differencing
-  data$log_seasonal_diff <- c(rep(NA, 4), diff(data$log_diff, lag = 4))
+  data$log_seasonal_diff <- c(rep(NA, 4), diff(data$log_diff, lag = 4)) * 100
   
   # Remove rows with NA values (from differencing)
   data_clean <- na.omit(data)
-  return(data_clean)
+  return(data_clean[,c(1,5)])
 }
 
-APPL_clean <- fn(apple)
-MSFT_clean <- fn(microsoft)
-NVDA_clean <- fn(nvidia)
-Yraw = cbind(APPL_clean$log_seasonal_diff, MSFT_clean$log_seasonal_diff, NVDA_clean$log_seasonal_diff)
 
-t = transform_to_stationary(apple)
-plot(NVDA_clean$log_seasonal_diff, type = "l")
+
+
+
+
+#' transform_to_stationary <- function(data) {
+#'   #' Computes log differences for growth rates and adjusts quarterly input data 
+#'   #' by trends and seasonality.
+#'   #' 
+#'   #' Parameters:
+#'   #' - data (data.frame): Data.frame from download_revenue_data.
+#'   #' 
+#'   #' Returns:
+#'   #' - Trend and seasonal adjusted logarithmic matrix of growth rates.
+#' 
+#'   # take the natural logarithm of the data
+#'   log_data <- log(data$revenue)
+#'   
+#'   # de-trending and de-seasonalizing adjustment
+#'   ts_log_data <- ts(log_data, frequency = 4)
+#'   decomposed <- stl(ts_log_data, s.window = "periodic")
+#'   seasonally_adjusted <- decomposed$time.series[, "remainder"]
+#'   
+#'   # calculate the first differences of the seasonally adjusted data
+#'   diff_log_data <- diff(seasonally_adjusted)
+#'   
+#'   # convert result to a data.frame
+#'   out <- data.frame(matrix(NA, dim(data)[1], 2))
+#'   out[,1] <- data$date
+#'   out[,2] <- matrix(c(NA, diff_log_data), ncol = 1)
+#'   
+#'   return(out)
+#' }

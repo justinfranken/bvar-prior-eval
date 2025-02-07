@@ -16,6 +16,7 @@ get_industry_growth_rates <- function(tickers, corp_names){
   
   # download revenue data and store in list
   df_list <- list()
+  
   for (i in 1:length(tickers)) {
     df_list[[i]] <- transform_to_stationary(download_revenue_data(
       tickers[i], 
@@ -30,7 +31,11 @@ get_industry_growth_rates <- function(tickers, corp_names){
 }
 
 
-plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Companies Over Time", y_lim = c(-0.35, 0.35), legend_off = FALSE){
+plot_gr <- function(industry_gr, 
+                    adj_cex = 0.7, 
+                    title = "Growth Rates of Companies Over Time", 
+                    #y_lim = c(-0.35, 0.35), 
+                    legend_off = FALSE){
   #' Plot industry growth rates.
   #' 
   #' Parameters:
@@ -44,7 +49,6 @@ plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Compani
   matplot(
     industry_gr[,1], industry_gr[,-1], type = "l", lty = 1, 
     col = 1:ncol(industry_gr[,-1]),
-    ylim = y_lim,
     xlab = "Year", ylab = "Growth Rate", 
     main = title
   )
@@ -63,13 +67,12 @@ plot_gr <- function(industry_gr, adj_cex = 0.7, title = "Growth Rates of Compani
 
 
 # --- Utility - Electrical Power Distribution ----------------------------------
-utilities_tickers <- c("NEE", "SO", "DUK", "PCG", "AEP", "D", "PEG")
+utilities_tickers <- c("NEE", "SO", "DUK", "PCG", "AEP", "PEG")
 utilities_corp_names <- c("nextera-energy", 
                        "southern", 
                        "duke-energy", 
                        "pacific-gas-electric",
-                       "american-electric-power", 
-                       "dominion-energy", 
+                       "american-electric-power",
                        "public-service-enterprise-group")
 utilities <- get_industry_growth_rates(utilities_tickers, utilities_corp_names)
 plot_gr(utilities, title = "Utilities")
@@ -80,7 +83,7 @@ mean(colMeans(as.matrix(utilities[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(utilities[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-utilities_ts <- ts(na.omit(utilities[,-1]), start = c(2009, 2), frequency = 4)
+utilities_ts <- ts(na.omit(utilities[,-1]), start = c(2010, 2), frequency = 4)
 colnames(utilities_ts) <- utilities_tickers
 # stationarity
 utilities_adf <- matrix(NA, ncol = length(utilities_tickers), nrow = 1)
@@ -91,9 +94,8 @@ colnames(utilities_adf) <- utilities_tickers
 utilities_adf
 # lags
 acf(utilities_ts)
-VARselect(utilities_ts, type = "none", lag.max = 10)
 # VAR coefficients
-utilities_var <- VAR(utilities_ts[,c("SO", "NEE", "AEP", "PCG", "PEG")], p = 8, type = "none")
+utilities_var <- VAR(utilities_ts[,c("SO", "NEE", "AEP", "PCG", "PEG")], p = 3, type = "const")
 summary(utilities_var)
 
 
@@ -118,7 +120,7 @@ mean(colMeans(as.matrix(soft[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(soft[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-soft_ts <- ts(na.omit(soft[,-1]), start = c(2010, 1), frequency = 4)
+soft_ts <- ts(na.omit(soft[,-1]), start = c(2010, 2), frequency = 4)
 colnames(soft_ts) <- soft_tickers
 # stationarity
 soft_adf <- matrix(NA, ncol = length(soft_tickers), nrow = 1)
@@ -129,9 +131,8 @@ colnames(soft_adf) <- soft_tickers
 soft_adf
 # lags
 acf(soft_ts)
-VARselect(soft_ts, type = "none", lag.max = 10)
 # VAR coefficients
-soft_var <- VAR(soft_ts[,c("MSFT", "SAP", "MSTR", "SSNC", "PEGA")], p = 6, type = "none")
+soft_var <- VAR(soft_ts[,c("MSFT", "SAP", "MSTR", "SSNC", "PEGA")], p = 3, type = "const")
 summary(soft_var)
 
 
@@ -153,7 +154,7 @@ mean(colMeans(as.matrix(oag[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(oag[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-oag_ts <- ts(na.omit(oag[,-1]), start = c(2010, 1), frequency = 4)
+oag_ts <- ts(na.omit(oag[,-1]), start = c(2010, 2), frequency = 4)
 colnames(oag_ts) <- oag_tickers
 # stationarity
 oag_adf <- matrix(NA, ncol = length(oag_tickers), nrow = 1)
@@ -164,20 +165,18 @@ colnames(oag_adf) <- oag_tickers
 oag_adf
 # lags
 acf(oag_ts)
-VARselect(oag_ts, type = "none", lag.max = 10)
 # VAR coefficients
-oag_var <- VAR(oag_ts[,c("XOM", "CVX", "SHEL", "BP", "YPF")], p = 9, type = "none")
+oag_var <- VAR(oag_ts[,c("XOM", "CVX", "SHEL", "BP", "YPF")], p = 3, type = "const")
 summary(oag_var)
 
 
 # --- Medical Products Manufacturers -------------------------------------------
-med_prod_tickers <- c("ABT", "SYK", "BSX", "RMD", "ZBH", "PODD")
+med_prod_tickers <- c("ABT", "SYK", "BSX", "RMD", "ZBH")
 med_prod_corp_names <- c("abbott-laboratories",
                      "stryker",
                      "boston-scientific",
                      "resmed",
-                     "zimmer-biomet-holdings",
-                     "insulet"
+                     "zimmer-biomet-holdings"
 )
 med_prod <- get_industry_growth_rates(med_prod_tickers, med_prod_corp_names)
 plot_gr(med_prod, title = "Medical Products_Manufacturers")
@@ -188,7 +187,7 @@ mean(colMeans(as.matrix(med_prod[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(med_prod[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-med_prod_ts <- ts(na.omit(med_prod[,-1]), start = c(2010, 1), frequency = 4)
+med_prod_ts <- ts(na.omit(med_prod[,-1]), start = c(2010, 2), frequency = 4)
 colnames(med_prod_ts) <- med_prod_tickers
 # stationarity
 med_prod_adf <- matrix(NA, ncol = length(med_prod_tickers), nrow = 1)
@@ -199,9 +198,8 @@ colnames(med_prod_adf) <- med_prod_tickers
 med_prod_adf
 # lags
 acf(med_prod_ts)
-VARselect(med_prod_ts, type = "none", lag.max = 10)
 # VAR coefficients
-med_prod_var <- VAR(med_prod_ts[,c("ABT", "SYK", "BSX", "RMD", "ZBH")], p = 9, type = "none")
+med_prod_var <- VAR(med_prod_ts[,c("ABT", "SYK", "BSX", "RMD", "ZBH")], p = 3, type = "const")
 summary(med_prod_var)
 
 
@@ -224,7 +222,7 @@ mean(colMeans(as.matrix(cp[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(cp[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-cp_ts <- ts(na.omit(cp[,-1]), start = c(2010, 1), frequency = 4)
+cp_ts <- ts(na.omit(cp[,-1]), start = c(2010, 2), frequency = 4)
 colnames(cp_ts) <- cp_tickers
 # stationarity
 cp_adf <- matrix(NA, ncol = length(cp_tickers), nrow = 1)
@@ -235,9 +233,8 @@ colnames(cp_adf) <- cp_tickers
 cp_adf
 # lags
 acf(cp_ts)
-VARselect(cp_ts, type = "none", lag.max = 10)
 # VAR coefficients
-cp_var <- VAR(cp_ts[,c("PG", "KMB", "CHD", "CLX", "NWL")], p = 8, type = "none")
+cp_var <- VAR(cp_ts[,c("PG", "KMB", "CHD", "CLX", "NWL")], p = 3, type = "const")
 summary(cp_var)
 
 
@@ -261,7 +258,7 @@ mean(colMeans(as.matrix(machinary[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(machinary[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-machinary_ts <- ts(na.omit(machinary[,-1]), start = c(2010, 1), frequency = 4)
+machinary_ts <- ts(na.omit(machinary[,-1]), start = c(2010, 2), frequency = 4)
 colnames(machinary_ts) <- machinary_tickers
 # stationarity
 machinary_adf <- matrix(NA, ncol = length(machinary_tickers), nrow = 1)
@@ -272,9 +269,8 @@ colnames(machinary_adf) <- machinary_tickers
 machinary_adf
 # lags
 acf(machinary_ts)
-VARselect(machinary_ts, type = "none", lag.max = 10)
 # VAR coefficients
-machinary_var <- VAR(machinary_ts[,c("ITW", "ATLKY", "DOV", "TRMB", "GGG")], p = 7, type = "none")
+machinary_var <- VAR(machinary_ts[,c("ITW", "ATLKY", "DOV", "TRMB", "GGG")], p = 3, type = "const")
 summary(machinary_var)
 
 
@@ -297,7 +293,7 @@ mean(colMeans(as.matrix(banks[,-1]), na.rm = TRUE))
 abline(h = mean(colMeans(as.matrix(banks[,-1]), na.rm = TRUE)), col = "red", lty = 2)
 
 # check time series
-banks_ts <- ts(na.omit(banks[,-1]), start = c(2010, 1), frequency = 4)
+banks_ts <- ts(na.omit(banks[,-1]), start = c(2010, 2), frequency = 4)
 colnames(banks_ts) <- banks_tickers
 # stationarity
 banks_adf <- matrix(NA, ncol = length(banks_tickers), nrow = 1)
@@ -308,9 +304,8 @@ colnames(banks_adf) <- banks_tickers
 banks_adf
 # lags
 acf(banks_ts)
-VARselect(banks_ts, type = "none", lag.max = 10)
 # VAR coefficients
-banks_var <- VAR(banks_ts[,c("JPM", "WFC", "C", "BAC", "MS")], p = 8, type = "none")
+banks_var <- VAR(banks_ts[,c("JPM", "WFC", "C", "BAC", "MS")], p = 3, type = "const")
 summary(banks_var)
 
 
@@ -336,17 +331,3 @@ for (i in 1:length(indust_list)) {
 }
 par(mfrow = c(1,1))
 
-
-
-
-y <- abbvie$quarterly_gr
-
-min_y <- min(y, na.rm = TRUE)  # Find the minimum value
-shift <- ifelse(min_y <= 0, abs(min_y) + 1, 0)  # Determine the shift amount
-shifted_y <- y + shift
-log_y <- log(shifted_y)
-seasonally_differenced <- diff(log_y, lag = 4)
-stationary_series <- diff(seasonally_differenced)
-
-abbvie$log_qrt_gr <- log_y
-abbvie$log_diffed_qrt_gr <- c(rep(NA, 5), stationary_series)

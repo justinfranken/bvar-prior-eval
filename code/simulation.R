@@ -37,12 +37,12 @@ rm(function_files)
 
 # ---- setting up simulation ---------------------------------------------------
 # -- global simulation settings -----------------
-n_iter <- 100
+n_iter <- 10
 n_draws <- 5000
-burnin <- 1000
+burnin <- 500
 intercept <- TRUE
 h <- 4
-p_bvar <- 3
+p_bvar <- 4
 p <- 3
 k <- 7
 m <- k * p + as.integer(intercept)
@@ -81,9 +81,7 @@ sim_params_with_shocks <- list(
 )
 
 
-# ------------------------------------------------------------------------------
-# Monte Carlo Simulation small observations
-# ------------------------------------------------------------------------------
+# ---- Monte Carlo Simulation small observations -------------------------------
 
 n_obs <- 40
 
@@ -116,9 +114,7 @@ small_out_with_shock <- simulation(n_iter = n_iter,
                                  sim_params = sim_params_with_shocks)
 
 
-# ------------------------------------------------------------------------------
-# Monte Carlo Simulation medium observations
-# ------------------------------------------------------------------------------
+# ---- Monte Carlo Simulation medium observations ------------------------------
 
 n_obs <- 60
 
@@ -150,9 +146,7 @@ medium_out_with_shock <- simulation(n_iter = n_iter,
                                    sim_params = sim_params_with_shocks)
 
 
-# ------------------------------------------------------------------------------
-# Monte Carlo Simulation large observations
-# ------------------------------------------------------------------------------
+# ---- Monte Carlo Simulation large observations -------------------------------
 
 n_obs <- 80
 
@@ -182,3 +176,21 @@ large_out_with_shock <- simulation(n_iter = n_iter,
                                     dummy_pars = dummy_pars, 
                                     mh_params = mh_params, 
                                     sim_params = sim_params_with_shocks)
+
+
+# ------------------------------------------------------------------------------
+# evaluate simulation results
+# ------------------------------------------------------------------------------
+
+# --- clarify models being used ------------------------------------------------
+models <- c("classic_mn", "hierarch_mn", "ssvs", "flat_mn", "var")
+
+small_no_shock <- evaluate_sim_res(small_out_no_shock, models = models, h = h, n_iter = n_iter)
+small_with_shock <- evaluate_sim_res(small_out_with_shock, models = models, h = h, n_iter = n_iter)
+
+medium_no_shock <- evaluate_sim_res(medium_out_no_shock, models = models, h = h, n_iter = n_iter)
+medium_with_shock <- evaluate_sim_res(medium_out_with_shock, models = models, h = h, n_iter = n_iter)
+
+large_no_shock <- evaluate_sim_res(large_out_no_shock, models = models, h = h, n_iter = n_iter)
+large_with_shock <- evaluate_sim_res(large_out_with_shock, models = models, h = h, n_iter = n_iter)
+

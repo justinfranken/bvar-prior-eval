@@ -33,7 +33,6 @@ run_bvar_minnesota <- function(Yraw, p, intercept = FALSE,
   #'   - Phi (array): Posterior draws of the VAR coefficient matrix with dimensions (m x k x (n_draws - burnin)).
   #'   - Sigma (array): Posterior draws of the error covariance matrix with dimensions (k x k x (n_draws - burnin)).
   
-  
   # build (Y, X), possibly with dummies
   ld_aug <- create_lagged_data(Yraw, p, intercept,
                                use_dummies,
@@ -146,9 +145,10 @@ run_bvar_ssvs <- function(Yraw, p,
   #'
   #' Returns:
   #' - A list containing:
-  #'     delta_draws: A matrix of sampled delta vectors (n_draws x length(delta)).
   #'     Phi: An array of sampled VAR coefficient matrices with dimensions (ncol(X) x k x (n_draws - burnin)).
   #'     Sigma: An array of sampled error covariance matrices with dimensions (k x k x (n_draws - burnin)).
+  #'     delta_draws: A matrix of sampled delta vectors (n_draws x length(delta)).
+  
   ld_aug <- create_lagged_data(Yraw, p, intercept,
                                use_dummies,
                                dummy_pars)

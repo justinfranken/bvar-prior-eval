@@ -1,4 +1,4 @@
-# function which do monte carlo simulations.
+# function which do monte carlo simulations and evaluate its results.
 
 
 simulation <- function(n_iter,
@@ -234,7 +234,6 @@ monte_carlo_simulation <- function(n_draws, burnin, n_obs, k, p, m, h, intercept
                 min_exog_shocks = sim_params$min_exog_shocks,
                 max_exog_shocks = sim_params$max_exog_shocks
                 )
-  data <- data * 100
   Ypred <- data[(T_data-h+1):T_data,]
   Yraw <- data[1:(T_data-h),]
   
@@ -385,5 +384,61 @@ monte_carlo_simulation <- function(n_draws, burnin, n_obs, k, p, m, h, intercept
     ssvs = list(rmse = rmse_ssvs, pred_acc = pred_acc_ssvs),
     flat = list(rmse = rmse_flat, pred_acc = pred_acc_flat),
     var = list(rmse = rmse_var, pred_acc = pred_acc_var)
+  ))
+}
+
+
+evaluate_sim_res <- function(result_obj, models, h, n_iter){
+  #' Evaluates simulation results across multiple models and iterations.
+  #'
+  #' Parameters:
+  #' - result_obj (list): A list of length n_iter, where each element is itself a list containing
+  #'   the evaluation results for each model. Each model's result should include:
+  #'     - rmse: A list with elements 'all_rmse' (overall RMSE) and 'row_rmse' (h-step ahead RMSE).
+  #'     - pred_acc: A matrix of prediction interval accuracy (dimensions h x 1).
+  #' - models (character vector): A vector of model names corresponding to the different models evaluated.
+  #' - h (integer): The forecast horizon (number of steps ahead).
+  #' - n_iter (integer): The number of simulation iterations.
+  #'
+  #' Returns:
+  #' - A list containing:
+  #'     - all_rmse: A 1 x total_model matrix of overall RMSE means for each model.
+  #'     - h_fcst_rmse: An h x total_model matrix of h-step ahead RMSE means for each model.
+  #'     - pred_acc: An h x total_model matrix of mean prediction interval accuracy for each model.
+  
+  total_model <- length(models)
+  all_rmse <- matrix(0, nrow = total_model, ncol = n_iter)
+  h_fcst_rmse <- matrix(0, nrow = h * total_model, ncol = n_iter)
+  pred_acc <- matrix(0, nrow = h * total_model, ncol = n_iter)
+  
+  for (model in seq_len(total_model)) {
+    for (iter in seq_len(n_iter)) {
+      # overall mean
+      all_rmse[model,iter] <- result_obj$results[[iter]][[model]]$rmse$all_rmse
+      all_rmse_mean <- matrix(rowMeans(all_rmse), nrow = 1)
+      colnames(all_rmse_mean) <- models
+      
+      # T+h means
+      h_fcst_rmse[((model - 1) * h + 1):(model * h), iter] <- result_obj$results[[iter]][[model]]$rmse$row_rmse
+      h_fcst_rmse_mean <- matrix(
+        rowMeans(h_fcst_rmse), 
+        nrow = h, 
+        ncol = total_model, 
+        dimnames = list(paste0("T+", 1:h), models))
+      
+      # prediction interval accuracy
+      pred_acc[((model - 1) * h + 1):(model * h), iter] <- result_obj$results[[iter]][[model]]$pred_acc
+      pred_acc_mean <- matrix(
+        rowMeans(pred_acc), 
+        nrow = h, 
+        ncol = total_model, 
+        dimnames = list(paste0("T+", 1:h), models))
+    }
+  }
+  
+  return(list(
+    all_rmse = drop(all_rmse_mean),
+    h_fcst_rmse = h_fcst_rmse_mean,
+    pred_acc = pred_acc_mean
   ))
 }

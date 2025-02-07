@@ -17,9 +17,10 @@ sherman_morrison_update <- function(A_inv, A_logdet, u, v) {
 
   denom <- as.numeric(1 + (t(v) %*% A_inv %*% u))
   
-  # if (abs(denom) < 1e-15) {
-  #   stop("Rank-1 update denominator numerically zero; check stability.")
-  # }
+  # check for unstable denominator values
+  if (abs(denom) < 1e-15) {
+    stop("Rank-1 update denominator numerically zero; check stability.")
+  }
   
   A_inv_u <- A_inv %*% u
   vT_A_inv <- t(v) %*% A_inv
