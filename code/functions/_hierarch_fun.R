@@ -65,15 +65,6 @@ log_ml_Y_density <- function(X, M, P, Q, v) {
   #'
   #' Returns:
   #' - log_pdf (numeric): The logarithm of the marginal likelihood density evaluated at the provided X.
-  #'
-  #' Details:
-  #' The function performs the following steps:
-  #' 1. Dimension Extraction: Determines the dimensions p (number of rows) and q (number of columns) from matrix X.
-  #' 2. Difference Calculation: Computes the difference between X and the mean matrix M.
-  #' 3. Matrix S Calculation: Calculates matrix S = Q + (X - M)' P (X - M), which is essential for the density computation.
-  #' 4. Log-Determinant Computation: Computes the logarithm of the determinants of matrices P, Q, and S using their Cholesky decompositions for numerical stability.
-  #' 5. Gamma Terms Summation: Calculates the sum of gamma function terms, which are part of the normalization constant in the density function.
-  #' 6. Log Density Assembly: Combines all computed terms to form the final log-density value log_pdf.
 
   p <- nrow(X) # T  
   q <- ncol(X) # k
@@ -136,30 +127,6 @@ log_posterior_delta <- function(Y, X, M0, V0, S0, v0, pi1_val, mu_val, gamma_val
   #' Returns:
   #' - log_posterior (numeric): The logarithm of the posterior density evaluated at the specified hyper parameters.
   #'   Returns -1e18 if any hyper parameter is outside the specified bounds, effectively assigning zero probability.
-  #'
-  #' Details:
-  #' The function performs the following steps:
-  #' 1. Parameter Bounds Check: 
-  #'    - Combines hyper parameters into a single vector hyper.
-  #'    - Checks if any parameter in hyper is outside the [lower_bound, upper_bound] range.
-  #'    - Returns -1e18 if any parameter is out of bounds to indicate an invalid configuration.
-  #'
-  #' 2. Dimension Extraction: 
-  #'    - Determines T_eff as the number of rows in Y.
-  #'    - Determines k as the number of columns in Y.
-  #'
-  #' 3. Marginal Likelihood Calculation (log_ml):
-  #'    - Computes the mean term M_term as X %*% M0.
-  #'    - Calculates the precision matrix P_term by inverting the matrix (I + X %*% V0 %*% t(X)).
-  #'    - Evaluates the log marginal likelihood using the log_ml_Y_density function with Y, M_term, P_term, S0, and v0.
-  #'
-  #' 4. Prior Density Calculation:
-  #'    - Computes the log-PDF of π₁, μ, and γ using the log_delta_pdf function with their respective hyperparameters.
-  #'    - For each σ²ᵢ in s2_diag_val, computes the log-PDF using log_delta_pdf with the inverse parameter set to TRUE.
-  #'    - Sums the log-PDFs of the σ²ᵢ parameters.
-  #'
-  #' 5. Posterior Density Assembly: 
-  #'    - Sums the log marginal likelihood and all log prior densities to obtain the final log_posterior.
   
   hyper <- c(pi1_val, mu_val, gamma_val, s2_diag_val)
   
