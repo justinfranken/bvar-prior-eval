@@ -118,7 +118,7 @@ helper_build_M0 <- function(k, p, intercept = FALSE, lag_mean = 1){
 
 
 helper_build_cov_matrix_minnesota <- function(Y, p, v0, s2_diag = NULL, intercept = FALSE, pi1 = 0.2, pi3 = 1, pi4 = 1000) {
-  #' Builds the covariance matrix and parameters for the normal-Wishart prior.
+  #' Builds the covariance matrix and parameters for the normal inverse-Wishart prior.
   #' 
   #' Parameters:
   #' - Y (matrix): The dataset (T x k), where T is the number of time points and k is the number of variables.
