@@ -227,6 +227,15 @@ monte_carlo_simulation <- function(n_draws, burnin, n_obs, k, p, m, h, intercept
   
   T_data <- n_obs + h
   data <- sim_y(k, p, T_data, 
+                d_min = sim_params$d_min,
+                d_max = sim_params$d_max,
+                off_d_min = sim_params$off_d_min,
+                off_d_max = sim_params$off_d_max,
+                init_sd = sim_params$init_sd,
+                shock_diag_min = sim_params$shock_diag_min,
+                shock_diag_max = sim_params$shock_diag_max,
+                mean_vola = sim_params$mean_vola,
+                sd_vola = sim_params$sd_vola,
                 min_indiv_shocks = sim_params$min_indiv_shocks,
                 max_indiv_shocks = sim_params$max_indiv_shocks, 
                 min_high_vol_periods = sim_params$min_high_vol_periods,
@@ -315,8 +324,8 @@ monte_carlo_simulation <- function(n_draws, burnin, n_obs, k, p, m, h, intercept
     use_dummies = FALSE,
     dummy_pars = dummy_pars,
     lag_mean = lag_mean,
-    tau0 = 1/10,
-    tau1 = 10,
+    tau0 = 1/100,
+    tau1 = 1,
     delta_prob = 0.8,
     n_draws = n_draws,
     burnin = burnin
@@ -409,7 +418,7 @@ evaluate_sim_res <- function(result_obj, models, h, n_iter){
   total_model <- length(models)
   all_rmse <- matrix(0, nrow = total_model, ncol = n_iter)
   h_fcst_rmse <- matrix(0, nrow = h * total_model, ncol = n_iter)
-  pred_acc <- matrix(0, nrow = h * total_model, ncol = n_iter)
+  pred_acc <- matrix(0, nrow = (h+1) * total_model, ncol = n_iter)
   
   for (model in seq_len(total_model)) {
     for (iter in seq_len(n_iter)) {
@@ -427,12 +436,12 @@ evaluate_sim_res <- function(result_obj, models, h, n_iter){
         dimnames = list(paste0("T+", 1:h), models))
       
       # prediction interval accuracy
-      pred_acc[((model - 1) * h + 1):(model * h), iter] <- result_obj$results[[iter]][[model]]$pred_acc
+      pred_acc[((model - 1) * (h+1) + 1):(model * (h+1)), iter] <- result_obj$results[[iter]][[model]]$pred_acc
       pred_acc_mean <- matrix(
         rowMeans(pred_acc), 
-        nrow = h, 
+        nrow = h+1, 
         ncol = total_model, 
-        dimnames = list(paste0("T+", 1:h), models))
+        dimnames = list(c(paste0("T+", 1:h), "overall_acc"), models))
     }
   }
   

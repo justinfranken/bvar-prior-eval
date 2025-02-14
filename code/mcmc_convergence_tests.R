@@ -74,24 +74,6 @@ hyper_params <- list(pi1_param = calc_gamma_pdf_params(m = 0.2, s = 0.4),
                                           mode = hhelper_compute_sigma_vec(Yraw, p)))
 
 
-# ---- run Minnesota Gibbs Sampling --------------------------------------------
-res_gibbs <- run_bvar_minnesota(
-  Yraw         = Yraw,
-  p            = p_bvar,
-  intercept    = intercept,
-  use_dummies  = FALSE,
-  dummy_pars   = dummy_pars_ex,
-  use_flat     = FALSE,
-  lag_mean     = 1,
-  pi1          = 0.2,
-  pi3          = 1,
-  pi4          = 1000,
-  sigma_vec    = NULL, 
-  n_draws      = 5000,
-  burnin       = 500
-)
-
-
 # ---- run Metropolis Hastings sampler -----------------------------------------
 res_mh <- run_bvar_hierarch(Yraw = Yraw, 
                             pi4 = 1000, 
@@ -101,7 +83,7 @@ res_mh <- run_bvar_hierarch(Yraw = Yraw,
                             hyper_params = hyper_params,
                             mh_params = mh_params,
                             n_draws = 5000, 
-                            burnin = 500)
+                            burnin = 1000)
 
 
 # ---- run SSVS sampler --------------------------------------------------------
@@ -111,35 +93,28 @@ res_ssvs <- run_bvar_ssvs(Yraw,
                           use_dummies = FALSE,
                           dummy_pars = dummy_pars_ex,
                           lag_mean = 1,
-                          tau0 = 1/10,
-                          tau1 = 10,
+                          tau0 = 1/100,
+                          tau1 = 1,
                           delta_prob = 0.8,
                           n_draws = 5000,
-                          burnin = 500)
+                          burnin = 1000)
 
 
 # ------------------------------------------------------------------------------
 # run convergence tests
 # ------------------------------------------------------------------------------
 
-# ---- run Minnesota Gibbs Sampling --------------------------------------------
-geweke_coef(res_gibbs, 1, intercept = intercept, alpha = 0.05)
-brooks_plot(res_gibbs, B = 500, coef = 1, coef_row = 3, coef_col = 2)
-traceplot_coef(res_gibbs, coef = 1, coef_row = 3, coef_col = 2)
-
-
 # ---- run Metropolis Hastings sampler -----------------------------------------
 geweke_coef(res_mh, 1, intercept = intercept, alpha = 0.05)
 geweke_hyp(res_mh, alpha = 0.05)
 brooks_plot(res_mh, B = 500, coef = 1, coef_row = 3, coef_col = 2)
-brooks_plot(res_mh, B = 500, coef = 3, coef_row = 3, coef_col = 2, hyper = TRUE)
 traceplot_coef(res_mh, coef = 1, coef_row = 3, coef_col = 2)
-traceplot_hyper(res_mh, hyp_para = 7)
+traceplot_hyper(res_mh, hyp_para = 1)
 
 
 # ---- run SSVS sampler --------------------------------------------------------
 geweke_coef(res_ssvs, 1, intercept = intercept, alpha = 0.05)
 brooks_plot(res_ssvs, B = 500, coef = 1, coef_row = 3, coef_col = 2)
 traceplot_coef(res_ssvs, coef = 1, coef_row = 3, coef_col = 2)
-traceplot_hyper(res_ssvs, 3)
+traceplot_hyper(res_ssvs, ssvs = TRUE)
 

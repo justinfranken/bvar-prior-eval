@@ -160,17 +160,20 @@ fcst_pred_int_acc <- function(fcst_obj, Ypred, h){
   #' - h (integer): The forecast horizon (number of steps ahead).
   #'
   #' Returns:
-  #' - A matrix of dimensions h x 1 where each entry is 1 if the true value for that forecast horizon 
-  #'   falls within the prediction interval for at least one variable, and 0 otherwise.
+  #' - A matrix of dimensions h+1 x 1 where each entry shows how many observations
+  #' fall within the intervals.
   
-  result <- matrix(0, nrow = h, ncol = 1, dimnames = list(paste0("T+", 1:h), "Y1 ... Yk"))
+  k <- ncol(Ypred)
+  result <- matrix(0, nrow = h+1, ncol = 1, dimnames = list(
+    c(paste0("T+", 1:h), "overall_acc"), "Y1 ... Yk"))
   
+  # prediction interval accuracy for h periods ahead
   for (i in 1:h) {
-    temp <- (fcst_obj$lower[i,] <= Ypred[i,]) & (Ypred[i,] <= fcst_obj$upper[i,])
-    
-    # if in pred interval 1, else 0
-    result[i,] <- ifelse(any(temp), 1, 0)
+    result[i,] <- 1 - (((2*k) - (sum(fcst_obj$lower[i,] < Ypred[i,]) + sum(Ypred[i,] < fcst_obj$upper[i,])))/(k))
   }
+  
+  # overall prediction interval accuracy
+  result[h+1,] <- 1 - (((2*k*h) - (sum(fcst_obj$lower < Ypred) + sum(Ypred < fcst_obj$upper)))/(k*h))
   
   return(result)
 }

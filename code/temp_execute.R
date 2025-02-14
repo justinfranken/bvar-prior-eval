@@ -26,20 +26,29 @@ rm(function_files)
 
 
 # ---- simulate data -----------------------------------------------------------
-k <- 7
+K <- 7
 p <- 2
 h <- 4
-T_data <- 40 + h
-data <- sim_y(k, p, T_data, 
-              min_indiv_shocks = 0, 
-              max_indiv_shocks = 0, 
-              min_high_vol_periods = 0, 
+n_obs <- 40
+T_data <- n_obs + h
+data <- sim_y(K, p, T_data, 
+              d_min = 0.20, 
+              d_max = 0.30, 
+              off_d_min = 0.05, 
+              off_d_max = 0.10, 
+              init_sd = 0.025, 
+              shock_diag_min = 0.45, 
+              shock_diag_max = 0.55, 
+              mean_vola = 0.035, 
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0)
 Ypred <- data[(T_data-h+1):T_data,]
 Yraw <- data[1:(T_data-h),]
-
 
 # ---- run Minnesota Gibbs Sampling --------------------------------------------
 dummy_pars_ex <- list(mu = 1.0,
@@ -73,17 +82,30 @@ Y_forecast_gibbs_median <- bvar_forecast(Yraw,
                                          intercept = intercept,
                                          draw_shocks = TRUE)$median
 sqrt(mean((Y_forecast_gibbs_median - Ypred)^2))
+ts.plot(Yraw, col=1:K, main= "Data", ylim = c(-12, 12), xlim = c(1, (n_obs + h)))
+abline(h = 0, col = "black", lty = 2)
+matlines((n_obs):(n_obs + h), rbind(Yraw[n_obs,], Y_forecast_gibbs_median), col = 1:K, lty = 2)
+matlines((n_obs):(n_obs + h), rbind(Yraw[n_obs,], Ypred), col = 1:K, lty = 1)
 
 # ---- run Metropolis Hastings sampler -----------------------------------------
-data <- sim_y(k, p, T_data, 
-              min_indiv_shocks = 0, 
-              max_indiv_shocks = 0, 
-              min_high_vol_periods = 0, 
-              max_high_vol_periods = 0,
-              min_exog_shocks = 0,
-              max_exog_shocks = 0)
-Yraw <- data[1:(T_data-h),]
+data <- sim_y(K, p, T_data, 
+              d_min = 0.20,
+              d_max = 0.30,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.45,
+              shock_diag_max = 0.55,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 1,
+              min_high_vol_periods = 1,
+              max_high_vol_periods = 1,
+              min_exog_shocks = 1,
+              max_exog_shocks = 1)
 Ypred <- data[(T_data-h+1):T_data,]
+Yraw <- data[1:(T_data-h),]
 
 mh_params <- list(
   n_thin <- 1,
@@ -111,15 +133,26 @@ plot(res_mh$hyper_parameters[,1], type = "l")
 
 
 # ---- run SSVS ----------------------------------------------------------------
-data <- sim_y(k, p, T_data, 
-              min_indiv_shocks = 0, 
-              max_indiv_shocks = 0, 
-              min_high_vol_periods = 0, 
+n_obs <- 40
+T_data <- n_obs + h
+data <- sim_y(K, p, T_data, 
+              d_min = 0.20, 
+              d_max = 0.30, 
+              off_d_min = 0.05, 
+              off_d_max = 0.10, 
+              init_sd = 0.025, 
+              shock_diag_min = 0.45, 
+              shock_diag_max = 0.55, 
+              mean_vola = 0.035, 
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
               max_high_vol_periods = 0,
               min_exog_shocks = 0,
               max_exog_shocks = 0)
-Yraw <- data[1:(T_data-h),]
 Ypred <- data[(T_data-h+1):T_data,]
+Yraw <- data[1:(T_data-h),]
 
 start <- Sys.time()
 res_ssvs <- run_bvar_ssvs(Yraw, p_bvar, 
@@ -127,15 +160,16 @@ res_ssvs <- run_bvar_ssvs(Yraw, p_bvar,
                         use_dummies = FALSE,
                         dummy_pars = list(mu = 1.0, gamma = 1.0, prior_mean = NULL),
                         lag_mean = 1,
-                        tau0 = 1/10,
-                        tau1 = 10,
+                        tau0 = 1/100,
+                        tau1 = 1,
                         delta_prob = 0.8,
                         n_draws = 5000,
                         burnin = 1000)
 Sys.time() - start
 Y_forecast_ssvs_median <- bvar_forecast(Yraw, res_ssvs$Phi, res_ssvs$Sigma, p = p_bvar, h = 4, alpha = 0.05, intercept = intercept)$median
 sqrt(mean((Y_forecast_ssvs_median - Ypred)^2))
-
+mean(res_ssvs$delta_draws)
+res_ssvs$delta_draws
 
 # ---- inspect outputs ---------------------------------------------------------
 # --- gibs

@@ -125,12 +125,14 @@ traceplot_coef <- function(out_obj, coef, coef_row, coef_col){
 }
 
 
-traceplot_hyper <- function(out_obj, hyp_para){
+traceplot_hyper <- function(out_obj, hyp_para = 1, ssvs = FALSE){
   #' Plots the trace of a hyperparameter over the MCMC chain.
   #'
   #' Parameters:
-  #' - out_obj (list): A list containing MCMC output of the run_bvar_hierarch() function.
-  #' - hyp_para (integer): The column index for the hyperparameter to be plotted.
+  #' - out_obj (list): A list containing MCMC output of the run_ssvs() function.
+  #' - hyp_para (integer): The column index in for the hyperparameter to be plotted.
+  #' - ssvs (logical, default = FALSE): Indicates if out_obj is from the ssvs prior.
+  #' If so, mean of each iterative chain draw is plotted.
   #'
   #' Returns:
   #' - A traceplot is produced. The plot shows:
@@ -139,50 +141,23 @@ traceplot_hyper <- function(out_obj, hyp_para){
   #'    - A red dashed line at 0.
   #'    - A green dashed line at the median of the hyperparameter draws.
   
-  plot(
-    out_obj$hyper_parameters[,hyp_para], 
-    type = "l",
-    main = paste0("Traceplot of hyperparameter ", 
-                  hyp_para, " with median ", 
-                  round(median(out_obj$hyper_parameters[,hyp_para]), digits = 2),
-                  " (green) and acceptance rate ",
-                  round(
-                    length(
-                      unique(out_obj$hyper_parameters[,hyp_para]
-                      )
-                    )/length(
-                      out_obj$hyper_parameters[,hyp_para]), 
-                    digits = 2)
-    ),
-    xlab = "Itteration j",
-    ylab = "Hyperparameter value"
-  )
-  abline(h = 0, col = "red", lty = 2)
-  abline(h = median(out_obj$hyper_parameters[,hyp_para]), col = "green", lty = 2)
-}
-
-traceplot_hyper <- function(out_obj, hyp_para){
-  #' Plots the trace of a hyperparameter over the MCMC chain.
-  #'
-  #' Parameters:
-  #' - out_obj (list): A list containing MCMC output of the run_ssvs() function.
-  #' - hyp_para (integer): The column index in for the hyperparameter to be plotted.
-  #'
-  #' Returns:
-  #' - A traceplot is produced. The plot shows:
-  #'    - Chain draws on the x-axis.
-  #'    - Hyperparameter values on the y-axis.
-  #'    - A red dashed line at 0.
-  #'    - A green dashed line at the median of the hyperparameter draws.
-  plot(out_obj$delta_draws[,hyp_para], 
+  if(ssvs){
+    chain <- rep(0, length(out_obj$delta_draws[,1]))
+    for (j in seq(chain)) {
+      chain[j] <- mean(out_obj$delta_draws[j,])
+    }
+  } else{
+    chain <- out_obj$hyper_parameters[,hyp_para]
+  }
+  
+  plot(chain, 
        type = "l",
        main = paste0("Traceplot of hyperparameter ", hyp_para, 
-                     " with mean ", mean(out_obj$delta_draws[,hyp_para]), " (green)"),
+                     " with mean ", round(mean(chain), digits = 2), " (green)"),
        xlab = "Itteration j",
-       ylab = "Hyperparameter value",
-       ylim = c(0, 1)
+       ylab = "Hyperparameter value"
   )
-  abline(h = mean(out_obj$delta_draws[,hyp_para]), col = "green", lty = 2)
+  abline(h = mean(chain), col = "green", lty = 2)
   abline(h = 0, col = "red", lty = 2)
 }
 
