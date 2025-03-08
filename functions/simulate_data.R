@@ -381,91 +381,274 @@ hhelper_make_stationary_A <- function(A_list, K) {
   return(A_list)
 }
 
+# ------------------------------------------------------------------------------
+# example plots of data generating process
+# ------------------------------------------------------------------------------
 
-# 
-# 
-# K = 7
-# p = 4
-# T_data = 80
-# 
-# 
-# # no shocks with low correlation
-# ts.plot(sim_y(K, p, T_data,
-#               d_min = 0.30,
-#               d_max = 0.40,
-#               off_d_min = 0.02,
-#               off_d_max = 0.07,
-#               init_sd = 0.025,
-#               shock_diag_min = 0.02,
-#               shock_diag_max = 0.07,
-#               mean_vola = 0.035,
-#               sd_vola = 0.007,
-#               min_indiv_shocks = 0,
-#               max_indiv_shocks = 0,
-#               min_high_vol_periods = 0,
-#               max_high_vol_periods = 0,
-#               min_exog_shocks = 0,
-#               max_exog_shocks = 0),
-#         col=1:K, main= "No shocks with low correlation", ylim = c(-12, 12))
-# abline(h = 0, col = "black", lty = 2)
-# 
-# # no shocks with high correlation
-# ts.plot(sim_y(K, p, T_data,
-#               d_min = 0.30,
-#               d_max = 0.40,
-#               off_d_min = 0.05,
-#               off_d_max = 0.10,
-#               init_sd = 0.025,
-#               shock_diag_min = 0.40,
-#               shock_diag_max = 0.50,
-#               mean_vola = 0.035,
-#               sd_vola = 0.007,
-#               min_indiv_shocks = 0,
-#               max_indiv_shocks = 0,
-#               min_high_vol_periods = 0,
-#               max_high_vol_periods = 0,
-#               min_exog_shocks = 0,
-#               max_exog_shocks = 0),
-#         col=1:K, main= "No shocks with high correlation", ylim = c(-12, 12))
-# abline(h = 0, col = "black", lty = 2)
-# 
-# 
-# # Shocks with low correlation
-# ts.plot(sim_y(K, p, T_data,
-#               d_min = 0.20,
-#               d_max = 0.30,
-#               off_d_min = 0.00,
-#               off_d_max = 0.05,
-#               init_sd = 0.025,
-#               shock_diag_min = 0.00,
-#               shock_diag_max = 0.05,
-#               mean_vola = 0.035,
-#               sd_vola = 0.007,
-#               min_indiv_shocks = 1,
-#               max_indiv_shocks = 1,
-#               min_high_vol_periods = 2,
-#               max_high_vol_periods = 2,
-#               min_exog_shocks = 2,
-#               max_exog_shocks = 2),
-#         col=1:K, main= "Shocks with low correlation", ylim = c(-30, 30))
-# abline(h = 0, col = "black", lty = 2)
-# 
-# # Shocks with high correlation
-# ts.plot(sim_y(K, p, T_data,
-#               d_min = 0.20,
-#               d_max = 0.30,
-#               off_d_min = 0.05,
-#               off_d_max = 0.10,
-#               init_sd = 0.025,
-#               shock_diag_min = 0.45,
-#               shock_diag_max = 0.55,
-#               mean_vola = 0.035,
-#               sd_vola = 0.007,
-#               min_indiv_shocks = 0,
-#               max_indiv_shocks = 1,
-#               min_high_vol_periods = 1,
-#               max_high_vol_periods = 1,
-#               min_exog_shocks = 1,
-#               max_exog_shocks = 1),
-#         col=1:K, main= "Shocks with high correlation", ylim = c(-30, 30))
-# abline(h = 0, col = "black", lty = 2)
+# ---- small sample size -------------------------------------------------------
+par(mfrow = c(2,2), mar = c(2.5, 2.5, 2.5, 0.5))
+K = 7
+p = 4
+T_data = 40
+
+# no shocks with low correlation
+par(mar = c(2.5, 2.5, 2.5, 0.5))
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with low correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+# no shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with high correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+
+# Shocks with low correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 1,
+              min_high_vol_periods = 1,
+              max_high_vol_periods = 1,
+              min_exog_shocks = 1,
+              max_exog_shocks = 1),
+        col=1:K, main= "Shocks with low correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+# Shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 1,
+              min_high_vol_periods = 1,
+              max_high_vol_periods = 1,
+              min_exog_shocks = 1,
+              max_exog_shocks = 1),
+        col=1:K, main= "Shocks with high correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+
+# ---- medium sample size -------------------------------------------------------
+par(mfrow = c(2,2), mar = c(2.5, 2.5, 2.5, 0.5))
+K = 7
+p = 4
+T_data = 80
+
+# no shocks with low correlation
+par(mar = c(2.5, 2.5, 2.5, 0.5))
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with low correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+# no shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with high correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+
+# Shocks with low correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 1,
+              max_indiv_shocks = 1,
+              min_high_vol_periods = 2,
+              max_high_vol_periods = 2,
+              min_exog_shocks = 2,
+              max_exog_shocks = 2),
+        col=1:K, main= "Shocks with low correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+# Shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 1,
+              max_indiv_shocks = 1,
+              min_high_vol_periods = 2,
+              max_high_vol_periods = 2,
+              min_exog_shocks = 2,
+              max_exog_shocks = 2),
+        col=1:K, main= "Shocks with high correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+
+# ---- large sample size -------------------------------------------------------
+par(mfrow = c(2,2), mar = c(2.5, 2.5, 2.5, 0.5))
+K = 7
+p = 4
+T_data = 200
+
+# no shocks with low correlation
+par(mar = c(2.5, 2.5, 2.5, 0.5))
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with low correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+# no shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 0,
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0),
+        col=1:K, main= "No shocks with high correlation", ylim = c(-12, 12))
+abline(h = 0, col = "black", lty = 2)
+
+
+# Shocks with low correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.02,
+              off_d_max = 0.07,
+              init_sd = 0.025,
+              shock_diag_min = 0.02,
+              shock_diag_max = 0.07,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 1,
+              max_indiv_shocks = 2,
+              min_high_vol_periods = 3,
+              max_high_vol_periods = 3,
+              min_exog_shocks = 3,
+              max_exog_shocks = 3),
+        col=1:K, main= "Shocks with low correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+# Shocks with high correlation
+ts.plot(sim_y(K, p, T_data,
+              d_min = 0.30,
+              d_max = 0.40,
+              off_d_min = 0.05,
+              off_d_max = 0.10,
+              init_sd = 0.025,
+              shock_diag_min = 0.40,
+              shock_diag_max = 0.50,
+              mean_vola = 0.035,
+              sd_vola = 0.007,
+              min_indiv_shocks = 1,
+              max_indiv_shocks = 2,
+              min_high_vol_periods = 3,
+              max_high_vol_periods = 3,
+              min_exog_shocks = 3,
+              max_exog_shocks = 3),
+        col=1:K, main= "Shocks with high correlation", ylim = c(-30, 30))
+abline(h = 0, col = "black", lty = 2)
+
+

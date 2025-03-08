@@ -26,7 +26,7 @@ rm(function_files)
 
 
 # ---- simulate data -----------------------------------------------------------
-K <- 7
+k <- 7
 p <- 2
 h <- 4
 n_obs <- 40
@@ -88,22 +88,24 @@ matlines((n_obs):(n_obs + h), rbind(Yraw[n_obs,], Y_forecast_gibbs_median), col 
 matlines((n_obs):(n_obs + h), rbind(Yraw[n_obs,], Ypred), col = 1:K, lty = 1)
 
 # ---- run Metropolis Hastings sampler -----------------------------------------
+n_obs <- 40
+T_data <- n_obs + h
 data <- sim_y(K, p, T_data, 
-              d_min = 0.20,
-              d_max = 0.30,
-              off_d_min = 0.05,
-              off_d_max = 0.10,
-              init_sd = 0.025,
-              shock_diag_min = 0.45,
-              shock_diag_max = 0.55,
-              mean_vola = 0.035,
+              d_min = 0.20, 
+              d_max = 0.30, 
+              off_d_min = 0.05, 
+              off_d_max = 0.10, 
+              init_sd = 0.025, 
+              shock_diag_min = 0.45, 
+              shock_diag_max = 0.55, 
+              mean_vola = 0.035, 
               sd_vola = 0.007,
               min_indiv_shocks = 0,
-              max_indiv_shocks = 1,
-              min_high_vol_periods = 1,
-              max_high_vol_periods = 1,
-              min_exog_shocks = 1,
-              max_exog_shocks = 1)
+              max_indiv_shocks = 0,
+              min_high_vol_periods = 0,
+              max_high_vol_periods = 0,
+              min_exog_shocks = 0,
+              max_exog_shocks = 0)
 Ypred <- data[(T_data-h+1):T_data,]
 Yraw <- data[1:(T_data-h),]
 
@@ -131,9 +133,10 @@ Sys.time() - start
 res_mh$acceptance_rate
 plot(res_mh$hyper_parameters[,1], type = "l")
 
+res_mh$hyper_parameters
 
 # ---- run SSVS ----------------------------------------------------------------
-n_obs <- 40
+n_obs <- 200
 T_data <- n_obs + h
 data <- sim_y(K, p, T_data, 
               d_min = 0.20, 

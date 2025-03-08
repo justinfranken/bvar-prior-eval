@@ -162,7 +162,7 @@ traceplot_hyper <- function(out_obj, hyp_para = 1, ssvs = FALSE){
 }
 
 
-brooks_plot <- function(out_obj, B, coef, coef_row, coef_col){
+brooks_plot <- function(out_obj, B, coef, coef_row, coef_col, main = NULL, chain = FALSE, cex_axis = 1){
   #' Generates a Brooks-style CUSUM hairiness plot for a selected BVAR coefficient.
   #'
   #' Parameters:
@@ -171,11 +171,15 @@ brooks_plot <- function(out_obj, B, coef, coef_row, coef_col){
   #' - coef (integer): Either 1 for Phi or 2 for Sigma. 
   #' - coef_row (integer): The row index of the coefficient to be plotted.
   #' - coef_col (integer): The column index of the coefficient to be plotted.
+  #' - main (character): If NULL, main will be determined automatically.
+  #' - chain (logical): If FALSE, chain will be taken from a bvar estimation results object.
+  #' - cex_axis (scalar): Adjust axis size.
   #'
   #' Returns:
   #' - A Brooks-style CUSUM hairiness plot for the selected coefficient is produced.
   
-  chain <- out_obj[[coef]][coef_row,coef_col,]
+  if(!chain) chain <- out_obj[[coef]][coef_row,coef_col,]
+  if(is.null(main)) main <- paste0("CUSUM Hairiness Measure of ", ifelse(coef == 1, "Phi", "Sigma"), "[", coef_row, ",", coef_col, "]")
   
   # get smoothness running means
   res <- helper_cusum_hairiness(chain, B)
@@ -193,7 +197,8 @@ brooks_plot <- function(out_obj, B, coef, coef_row, coef_col){
     type = "l",
     xlab = "Iteration t",
     ylab = expression(D[t]),
-    main = paste0("CUSUM Hairiness Measure of ", ifelse(coef == 1, "Phi", "Sigma"), "[", coef_row, ",", coef_col, "]")
+    main = main,
+    cex.axis = cex_axis
   )
   lines(t_seq, lower[t_seq], col = "red", lty = 2)
   lines(t_seq, upper[t_seq], col = "red", lty = 2)

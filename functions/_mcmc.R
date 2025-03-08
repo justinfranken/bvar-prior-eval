@@ -120,6 +120,8 @@ run_mh_hierarch <- function(Y, X, p, intercept, hyper_params,
   #'   - log_post_vec: A vector of log-posterior values corresponding to the sampled hyper parameters.
   #'   - acceptance_rate: The overall acceptance rate of the MCMC sampler after the burn-in.
   
+  k <- ncol(Y)
+  
   # ----------------------------------------------------------------------------
   # initialize MCMC loop
   # ----------------------------------------------------------------------------

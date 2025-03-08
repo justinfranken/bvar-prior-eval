@@ -420,30 +420,32 @@ evaluate_sim_res <- function(result_obj, models, h, n_iter){
   h_fcst_rmse <- matrix(0, nrow = h * total_model, ncol = n_iter)
   pred_acc <- matrix(0, nrow = (h+1) * total_model, ncol = n_iter)
   
+  # get results in matrix form
   for (model in seq_len(total_model)) {
     for (iter in seq_len(n_iter)) {
-      # overall mean
       all_rmse[model,iter] <- result_obj$results[[iter]][[model]]$rmse$all_rmse
-      all_rmse_mean <- matrix(rowMeans(all_rmse), nrow = 1)
-      colnames(all_rmse_mean) <- models
-      
-      # T+h means
       h_fcst_rmse[((model - 1) * h + 1):(model * h), iter] <- result_obj$results[[iter]][[model]]$rmse$row_rmse
-      h_fcst_rmse_mean <- matrix(
-        rowMeans(h_fcst_rmse), 
-        nrow = h, 
-        ncol = total_model, 
-        dimnames = list(paste0("T+", 1:h), models))
-      
-      # prediction interval accuracy
       pred_acc[((model - 1) * (h+1) + 1):(model * (h+1)), iter] <- result_obj$results[[iter]][[model]]$pred_acc
-      pred_acc_mean <- matrix(
-        rowMeans(pred_acc), 
-        nrow = h+1, 
-        ncol = total_model, 
-        dimnames = list(c(paste0("T+", 1:h), "overall_acc"), models))
     }
   }
+  
+  # overall mean
+  all_rmse_mean <- matrix(rowMeans(all_rmse), nrow = 1)
+  colnames(all_rmse_mean) <- models
+  
+  # T+h means
+  h_fcst_rmse_mean <- matrix(
+    rowMeans(h_fcst_rmse), 
+    nrow = h, 
+    ncol = total_model, 
+    dimnames = list(paste0("T+", 1:h), models))
+  
+  # prediction interval accuracy
+  pred_acc_mean <- matrix(
+    rowMeans(pred_acc), 
+    nrow = h+1, 
+    ncol = total_model, 
+    dimnames = list(c(paste0("T+", 1:h), "overall_acc"), models))
   
   return(list(
     all_rmse = drop(all_rmse_mean),

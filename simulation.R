@@ -290,9 +290,10 @@ large_with_shocks_high_corr <- list(
 
 # ---- Monte Carlo Simulation small observations -------------------------------
 
-# DONE
+
 n_obs <- 40
 
+# DONE
 small_out_no_shocks_low_corr <- simulation(n_iter = n_iter, 
                                            n_draws = n_draws, 
                                            burnin = burnin, 
@@ -306,6 +307,7 @@ small_out_no_shocks_low_corr <- simulation(n_iter = n_iter,
                                            mh_params = mh_params,  
                                            sim_params = small_no_shocks_low_corr)
 
+# DONE
 small_out_no_shocks_high_corr <- simulation(n_iter = n_iter, 
                                             n_draws = n_draws, 
                                             burnin = burnin, 
@@ -319,6 +321,7 @@ small_out_no_shocks_high_corr <- simulation(n_iter = n_iter,
                                             mh_params = mh_params,  
                                             sim_params = small_no_shocks_high_corr)
 
+# DONE
 small_out_with_shocks_low_corr <- simulation(n_iter = n_iter, 
                                              n_draws = n_draws, 
                                              burnin = burnin, 
@@ -332,6 +335,7 @@ small_out_with_shocks_low_corr <- simulation(n_iter = n_iter,
                                              mh_params = mh_params,  
                                              sim_params = small_with_shocks_low_corr)
 
+# DONE
 small_out_with_shocks_high_corr <- simulation(n_iter = n_iter, 
                                               n_draws = n_draws, 
                                               burnin = burnin, 
@@ -348,13 +352,14 @@ small_out_with_shocks_high_corr <- simulation(n_iter = n_iter,
 
 saveRDS(small_out_no_shocks_low_corr, file="small_out_no_shocks_low_corr.RData") # DONE
 saveRDS(small_out_no_shocks_high_corr, file="small_out_no_shocks_high_corr.RData") # DONE
-saveRDS(small_out_with_shocks_low_corr, file="small_out_with_shocks_low_corr.RData")
-saveRDS(small_out_with_shocks_high_corr, file="small_out_with_shocks_high_corr.RData")
+saveRDS(small_out_with_shocks_low_corr, file="small_out_with_shocks_low_corr.RData") # DONE
+saveRDS(small_out_with_shocks_high_corr, file="small_out_with_shocks_high_corr.RData") # DONE
 
 # ---- Monte Carlo Simulation medium observations ------------------------------
 
 n_obs <- 80
 
+# DONE
 medium_out_no_shocks_low_corr <- simulation(n_iter = n_iter, 
                                             n_draws = n_draws, 
                                             burnin = burnin, 
@@ -368,6 +373,7 @@ medium_out_no_shocks_low_corr <- simulation(n_iter = n_iter,
                                             mh_params = mh_params,  
                                             sim_params = medium_no_shocks_low_corr)
 
+# DONE
 medium_out_no_shocks_high_corr <- simulation(n_iter = n_iter, 
                                              n_draws = n_draws, 
                                              burnin = burnin, 
@@ -381,6 +387,7 @@ medium_out_no_shocks_high_corr <- simulation(n_iter = n_iter,
                                              mh_params = mh_params,  
                                              sim_params = medium_no_shocks_high_corr)
 
+# DONE
 medium_out_with_shocks_low_corr <- simulation(n_iter = n_iter, 
                                               n_draws = n_draws, 
                                               burnin = burnin, 
@@ -394,6 +401,7 @@ medium_out_with_shocks_low_corr <- simulation(n_iter = n_iter,
                                               mh_params = mh_params,  
                                               sim_params = medium_with_shocks_low_corr)
 
+# DONE
 medium_out_with_shocks_high_corr <- simulation(n_iter = n_iter, 
                                                n_draws = n_draws, 
                                                burnin = burnin, 
@@ -408,10 +416,16 @@ medium_out_with_shocks_high_corr <- simulation(n_iter = n_iter,
                                                sim_params = medium_with_shocks_high_corr)
 
 
+saveRDS(medium_out_no_shocks_low_corr, file="medium_out_no_shocks_low_corr.RData") # DONE
+saveRDS(medium_out_no_shocks_high_corr, file="medium_out_no_shocks_high_corr.RData") # DONE
+saveRDS(medium_out_with_shocks_low_corr, file="medium_out_with_shocks_low_corr.RData") # DONE
+saveRDS(medium_out_with_shocks_high_corr, file="medium_out_with_shocks_high_corr.RData") # DONE
+
 # ---- Monte Carlo Simulation large observations -------------------------------
 
 n_obs <- 200
 
+# DONE
 large_out_no_shocks_low_corr <- simulation(n_iter = n_iter, 
                                            n_draws = n_draws, 
                                            burnin = burnin, 
@@ -424,7 +438,7 @@ large_out_no_shocks_low_corr <- simulation(n_iter = n_iter,
                                            dummy_pars = dummy_pars, 
                                            mh_params = mh_params,  
                                            sim_params = large_no_shocks_low_corr)
-
+# DONE
 large_out_no_shocks_high_corr <- simulation(n_iter = n_iter, 
                                             n_draws = n_draws, 
                                             burnin = burnin, 
@@ -438,6 +452,7 @@ large_out_no_shocks_high_corr <- simulation(n_iter = n_iter,
                                             mh_params = mh_params,  
                                             sim_params = large_no_shocks_high_corr)
 
+# DONE
 large_out_with_shocks_low_corr <- simulation(n_iter = n_iter, 
                                              n_draws = n_draws, 
                                              burnin = burnin, 
@@ -451,6 +466,7 @@ large_out_with_shocks_low_corr <- simulation(n_iter = n_iter,
                                              mh_params = mh_params,  
                                              sim_params = large_with_shocks_low_corr)
 
+# DONE
 large_out_with_shocks_high_corr <- simulation(n_iter = n_iter, 
                                               n_draws = n_draws, 
                                               burnin = burnin, 
@@ -464,6 +480,10 @@ large_out_with_shocks_high_corr <- simulation(n_iter = n_iter,
                                               mh_params = mh_params,  
                                               sim_params = large_with_shocks_high_corr)
 
+saveRDS(large_out_no_shocks_low_corr, file="large_out_no_shocks_low_corr.RData") # DONE
+saveRDS(large_out_no_shocks_high_corr, file="large_out_no_shocks_high_corr.RData") # DONE
+saveRDS(large_out_with_shocks_low_corr, file="large_out_with_shocks_low_corr.RData") # DONE
+saveRDS(large_out_with_shocks_high_corr, file="large_out_with_shocks_high_corr.RData") # DONE
 
 # ------------------------------------------------------------------------------
 # evaluate simulation results
@@ -480,7 +500,7 @@ small_no_shock_low_corr <- evaluate_sim_res(small_out_no_shocks_low_corr,
 small_with_shock_low_corr <- evaluate_sim_res(small_out_with_shocks_low_corr, 
                                                models = models, 
                                                h = h, 
-                                               n_iter = n_iter)
+                                               n_iter = n_iter) # DONE
 small_no_shock_high_corr <- evaluate_sim_res(small_out_no_shocks_high_corr, 
                                              models = models, 
                                              h = h, 
@@ -488,31 +508,31 @@ small_no_shock_high_corr <- evaluate_sim_res(small_out_no_shocks_high_corr,
 small_with_shock_high_corr <- evaluate_sim_res(small_out_with_shocks_high_corr, 
                                                models = models, 
                                                h = h, 
-                                               n_iter = n_iter)
+                                               n_iter = n_iter) # DONE
 
 # -- medium ---------------------------
 medium_no_shock_low_corr <- evaluate_sim_res(medium_out_no_shocks_low_corr, 
                                              models = models, 
                                              h = h, 
-                                             n_iter = n_iter)
+                                             n_iter = n_iter) # DONE
 medium_with_shock_low_corr <- evaluate_sim_res(medium_out_with_shocks_low_corr, 
                                                models = models, 
                                                h = h, 
-                                               n_iter = n_iter)
+                                               n_iter = n_iter) # DONE
 medium_no_shock_high_corr <- evaluate_sim_res(medium_out_no_shocks_high_corr, 
                                              models = models, 
                                              h = h, 
-                                             n_iter = n_iter)
+                                             n_iter = n_iter) # DONE
 medium_with_shock_high_corr <- evaluate_sim_res(medium_out_with_shocks_high_corr, 
                                                models = models, 
                                                h = h, 
-                                               n_iter = n_iter)
+                                               n_iter = n_iter) # DONE
 
 # -- large ----------------------------
 large_no_shock_low_corr <- evaluate_sim_res(large_out_no_shocks_low_corr, 
                                              models = models, 
                                              h = h, 
-                                             n_iter = n_iter)
+                                             n_iter = n_iter) # DONE
 large_with_shock_low_corr <- evaluate_sim_res(large_out_with_shocks_low_corr, 
                                                models = models, 
                                                h = h, 
@@ -520,7 +540,7 @@ large_with_shock_low_corr <- evaluate_sim_res(large_out_with_shocks_low_corr,
 large_no_shock_high_corr <- evaluate_sim_res(large_out_no_shocks_high_corr, 
                                              models = models, 
                                              h = h, 
-                                             n_iter = n_iter)
+                                             n_iter = n_iter) # DONE
 large_with_shock_high_corr <- evaluate_sim_res(large_out_with_shocks_high_corr, 
                                                models = models, 
                                                h = h, 

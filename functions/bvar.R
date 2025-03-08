@@ -95,10 +95,13 @@ run_bvar_hierarch <- function(Yraw, p, intercept, mh_params, hyper_params,
   #'   - log_post_vec: A vector of log-posterior values corresponding to the sampled hyper parameters.
   #'   - acceptance_rate: The overall acceptance rate of the MCMC sampler.
   
+  k <- ncol(Yraw)
+  
   ld <- create_lagged_data(Yraw, p, intercept,
                                use_dummies = FALSE)
   Y <- ld$Y
   X <- ld$X
+  
   
   n_thin <- mh_params[[1]]
   scale_hess <- mh_params[[2]]
