@@ -1,6 +1,6 @@
 # Evaluating Prior Distributions in Bayesian Vector Autoregressions: A Comparative Analysis
 
-This project has been developed for my master's thesis *"Evaluating Prior Distributions in Bayesian Vector Autoregressions: A Comparative Analysis"* at the University of Bonn. The goal of this work is to compare the predictive power of different *Minnesota* style priors in Bayesian vector autoregressive models, especially in settings with high volatily time series and limited amount of observations at a time. Comparative analysis is done on simulated data and real world quarterly revenue data sourced from [macrotrends](https://www.macrotrends.net/). Below you can find an overview of the repositories structure and the accomodation content.
+This project has been developed for my master's thesis *"Evaluating Prior Distributions in Bayesian Vector Autoregressions: A Comparative Analysis"* at the University of Bonn. The goal of this work is to compare the predictive power of different *Minnesota* style priors in Bayesian vector autoregressive models, especially in settings with high volatily time series and limited amount of observations at a time. Comparative analysis is done on simulated data and real world quarterly revenue data sourced from [macrotrends](https://www.macrotrends.net/). Below you can find an overview of the repositories structure and the accommodating content.
 
 
 
@@ -101,8 +101,8 @@ for (i in 1:length(function_files)) {
 
 ## References
 Main papers and books used for this R project are:
-* Karlsson, S. (2013). *“Forecasting with Bayesian vector autoregressions”*. In: Handbook of Economic Forecasting. Ed. by G. Elliott and A. Timmermann. Vol. 2. Amsterdam: Elsevier, pp. 791–897.
 * Giannone, D., M. Lenza, and G. Primiceri (2015). “Prior Selection for Vector Autoregressions”. In: The Review of Economics and Statistics 97.2, pp. 436–451. url: https://direct.mit.edu/rest/article-abstract/97/2/436/58236/Prior-Selection-for-Vector-Autoregressions?redirectedFrom=fulltext.
+* Karlsson, S. (2013). *“Forecasting with Bayesian vector autoregressions”*. In: Handbook of Economic Forecasting. Ed. by G. Elliott and A. Timmermann. Vol. 2. Amsterdam: Elsevier, pp. 791–897.
 * Kuschnig, N. and L. Vashold (2021). “BVAR: Bayesian Vector Autoregressions with Hierarchical Prior Selection in R”. In: Journal of Statistical Software 100.14, pp. 1–27. doi: 10.18637/jss.v100.i14. url: https://doi.org/10.18637/jss.v100.i14.
 * Koop, G. 2013). “Forecasting with Medium and Large Bayesian VARs”. In: Journal of Applied Econometrics 28, pp. 177–203. doi: 10.1002/jae.1270. url: https://doi.org/10.
 * Rockova, Veronika (Nov. 2013). “Bayesian Variable Selection in High-dimensional Applications”. PhD thesis. url: http://hdl.handle.net/1765/51587.
